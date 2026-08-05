@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2 — 2026-08-05
+
+- **Fix: the page jumped up to the description after generating a suggestion.**
+  The issue page has two Rich Editor instances — description and comment — and
+  both carry the `.re-editor` class, so an unscoped selector focused the
+  description editor, which sits high up in the DOM. The comment editor is now
+  located inside `.re-comment-box`, and focus is taken with `preventScroll`, so
+  the view stays where the button is.
+
 ## 0.2.1 — 2026-08-05
 
 - Removed the **data-transfer acknowledgement** checkbox and the GDPR note from

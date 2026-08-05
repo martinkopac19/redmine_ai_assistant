@@ -80,6 +80,27 @@
     watchForCommentBox();
   }
 
+  /* POZOR: na stránke úlohy sú DVA editory Rich Editora — popisu a komentára —
+   * a oba majú triedu `.re-editor`. Nescopovaný `.re-editor` vráti ten PRVÝ,
+   * teda editor popisu (Rich Editor ho vkladá pred #issue_description_wiki,
+   * vysoko na stránke). Jeho fokusnutie odscrolluje stránku nahor k popisu.
+   *
+   * Editor komentára je vždy vnútri `.re-comment-box`, ktorý Rich Editor vytvára
+   * hneď za `#history`. */
+  function commentEditable() {
+    var box = document.querySelector('.re-comment-box');
+    return box ? box.querySelector('[contenteditable="true"]') : null;
+  }
+
+  function focusQuietly(el) {
+    // preventScroll: aj správny editor by inak stránku posunul na kurzor.
+    try {
+      el.focus({ preventScroll: true });
+    } catch (e) {
+      el.focus();
+    }
+  }
+
   /* Textarea #issue_notes je pri aktívnom Rich Editore skrytá, ale ten si
    * prepísal jej `value` setter tak, že zápis prepíše aj obsah editora.
    * Stačí teda nastaviť value; fokus dávame editoru, nie skrytému poľu. */
@@ -88,11 +109,11 @@
     if (!field) { return; }
     field.value = text;
 
-    var editable = document.querySelector('.re-editor [contenteditable="true"]');
+    var editable = commentEditable();
     if (editable) {
-      editable.focus();
+      focusQuietly(editable);
     } else if (field.offsetParent !== null) {
-      field.focus();
+      focusQuietly(field);
     }
   }
 
