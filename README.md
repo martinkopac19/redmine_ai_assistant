@@ -43,10 +43,9 @@ obrazu ju exportuje len hlavnému procesu.
 Potom **Administrácia → Pluginy → AI Assistant → Konfigurovať**:
 
 1. vlož **Gemini API kľúč** (získaš na [aistudio.google.com](https://aistudio.google.com)),
-2. zaškrtni **Potvrdenie o odosielaní dát**,
-3. zaškrtni **Zapnúť AI asistenta**.
+2. zaškrtni **Zapnúť AI asistenta**.
 
-Kým nie sú splnené všetky tri, plugin je neaktívny a do Gemini sa neodošle nič.
+Kým nie je splnené oboje, plugin je neaktívny a do Gemini sa neodošle nič.
 
 ## Jeden spoločný kľúč, len pre adminov
 
@@ -108,8 +107,8 @@ nedokáže prepísať. Ak sa to už stalo:
 Obsah úloh a komentárov **opúšťa Redmine** a ide do Google Gemini mimo EU. Plugin
 preto:
 
-1. Je **default vypnutý** a vyžaduje explicitné **potvrdenie admina** — bez neho
-   zostáva neaktívny aj keď je „zapnutý".
+1. Je **default vypnutý** — zapnúť ho môže len administrátor a len spolu s vložením
+   kľúča.
 2. **Nikdy** neposiela privátne poznámky (`private_notes`) — ani keď na ne má
    užívateľ právo.
 3. **Nikdy** neposiela privátne úlohy (`is_private`) — tlačidlá sa na nich

@@ -67,7 +67,7 @@ begin
 
   Setting.plugin_redmine_ai_assistant = original.to_h.merge(
     'api_key' => p1['api_key'], 'api_key_hint' => p1['api_key_hint'],
-    'enabled' => '1', 'gdpr_ack' => '1'
+    'enabled' => '1'
   )
   puts "  KeyStore.present?          : #{ok(RedmineAiAssistant::KeyStore.present?)}"
   puts "  KeyStore.api_key dekoduje  : #{ok(RedmineAiAssistant::KeyStore.api_key == FAKE_KEY)}"
@@ -95,18 +95,21 @@ begin
   puts "  pole je bez value=         : #{ok(html.include?('id="ai_assistant_api_key"') &&
                                             !html.match?(/id="ai_assistant_api_key"[^>]*value=/))}"
   puts "  zobrazuje sa len hint      : #{ok(html.include?('abcd'))}"
+  puts "  gdpr_ack checkbox je zruseny: #{ok(!html.include?('gdpr_ack'))}"
 
   # --- 5. gating ----------------------------------------------------------
-  puts "\n[5] Gating (zapnute + potvrdenie + kluc)"
+  puts "\n[5] Gating (zapnute + kluc)"
   base = RedmineAiAssistant.settings
   Setting.plugin_redmine_ai_assistant = base.merge('enabled' => '0')
   puts "  vypnute -> usable? false   : #{ok(RedmineAiAssistant.usable? == false)}"
-  Setting.plugin_redmine_ai_assistant = base.merge('enabled' => '1', 'gdpr_ack' => '0')
-  puts "  bez GDPR ack -> false      : #{ok(RedmineAiAssistant.usable? == false)}"
-  Setting.plugin_redmine_ai_assistant = base.merge('enabled' => '1', 'gdpr_ack' => '1', 'api_key' => '')
+  Setting.plugin_redmine_ai_assistant = base.merge('enabled' => '1', 'api_key' => '')
   puts "  bez kluca -> false         : #{ok(RedmineAiAssistant.usable? == false)}"
-  Setting.plugin_redmine_ai_assistant = base.merge('enabled' => '1', 'gdpr_ack' => '1')
+  Setting.plugin_redmine_ai_assistant = base.merge('enabled' => '1')
   puts "  vsetko splnene -> true     : #{ok(RedmineAiAssistant.usable? == true)}"
+  # Zrusene nastavenie sa uz nesmie nikde citat ani renderovat.
+  Setting.plugin_redmine_ai_assistant = base.merge('enabled' => '1', 'gdpr_ack' => '0')
+  puts "  stary gdpr_ack neblokuje   : #{ok(RedmineAiAssistant.usable? == true)}"
+  Setting.plugin_redmine_ai_assistant = base.merge('enabled' => '1')
 
   # --- 6. GDPR filtre ----------------------------------------------------
   puts "\n[6] GDPR filtre"
@@ -171,7 +174,7 @@ begin
             legend_key legend_general legend_context context_note
             setting_api_key setting_api_key_info setting_api_key_clear
             setting_api_key_clear_info key_set key_missing
-            setting_enabled setting_enabled_info setting_gdpr_ack setting_gdpr_ack_info
+            setting_enabled setting_enabled_info
             setting_model setting_model_info setting_max_tokens setting_max_tokens_info
             setting_rate_limit setting_rate_limit_info
             setting_description_limit setting_changeset_limit setting_system_prompt

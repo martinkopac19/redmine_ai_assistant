@@ -17,7 +17,6 @@ module RedmineAiAssistant
 
   DEFAULTS = {
     'enabled'             => '0',
-    'gdpr_ack'            => '0',
     'api_key'             => '',
     'api_key_hint'        => '',
     'model'               => 'gemini-3.6-flash',
@@ -40,10 +39,10 @@ module RedmineAiAssistant
       settings[key.to_s]
     end
 
-    # Plugin je použiteľný len ak ho admin zapol, potvrdil poznámku o odosielaní
-    # dát a vložil spoločný Gemini kľúč. Vypnuté je bezpečný default.
+    # Plugin je použiteľný len ak ho admin zapol a vložil spoločný Gemini kľúč.
+    # Vypnuté je bezpečný default.
     def enabled?
-      setting('enabled').to_s == '1' && setting('gdpr_ack').to_s == '1'
+      setting('enabled').to_s == '1'
     end
 
     def usable?

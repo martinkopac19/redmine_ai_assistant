@@ -45,13 +45,6 @@
     </p>
 
     <p>
-      <label><%= l(:'ai_assistant.setting_gdpr_ack') %></label>
-      <%= hidden_field_tag 'settings[gdpr_ack]', '0' %>
-      <%= check_box_tag 'settings[gdpr_ack]', '1', settings['gdpr_ack'].to_s == '1' %>
-      <em class="info"><%= l(:'ai_assistant.setting_gdpr_ack_info') %></em>
-    </p>
-
-    <p>
       <label><%= l(:'ai_assistant.setting_model') %></label>
       <%= text_field_tag 'settings[model]', settings['model'], :size => 40 %>
       <em class="info"><%= l(:'ai_assistant.setting_model_info') %></em>

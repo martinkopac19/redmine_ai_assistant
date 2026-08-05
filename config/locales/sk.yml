@@ -29,8 +29,6 @@ sk:
 
     setting_enabled: "Zapnúť AI asistenta"
     setting_enabled_info: "Vypnuté je bezpečný default — bez zapnutia sa do Gemini neodošle nič."
-    setting_gdpr_ack: "Potvrdenie o odosielaní dát"
-    setting_gdpr_ack_info: "Potvrdzujem, že som si vedomý, že text úloh a komentárov sa odosiela do Google Gemini mimo EU, a že to je v súlade s pravidlami Previa. Bez zaškrtnutia zostáva plugin neaktívny aj keď je zapnutý."
     setting_model: "Model"
     setting_model_info: "Napr. gemini-3.6-flash (odporúčaný default) alebo gemini-3.5-flash-lite pre nižšie náklady."
     setting_max_tokens: "Max. tokenov odpovede"

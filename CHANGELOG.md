@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 — 2026-08-05
+
+- Removed the **data-transfer acknowledgement** checkbox from the plugin
+  configuration. The plugin is now gated by the stored key plus the enable switch
+  only; off is still the default. Migration `005` drops the stored `gdpr_ack`
+  value so it cannot linger as a dead setting.
+- The GDPR note under the configuration form stays — the privacy behaviour itself
+  is unchanged: private notes and private issues are still never sent.
+
 ## 0.2.0 — 2026-08-05
 
 First published version. Switches the provider to **Google Gemini** and moves
@@ -15,8 +24,9 @@ from per-user API keys to **one shared key managed by an administrator**.
   renders empty and only the last four characters are shown, so the key cannot be
   read via Inspect element. An empty field means *keep the stored key*; a separate
   checkbox removes it.
-- Requires three things before anything is sent anywhere: the key, an explicit
-  **data-transfer acknowledgement**, and the enable switch. Off is the default.
+- Requires both the key and the enable switch before anything is sent anywhere.
+  Off is the default. (0.2.0 also required a data-transfer acknowledgement
+  checkbox; that was dropped in 0.2.1.)
 - Context sent to Gemini: subject, status, priority, author, assignee, the
   (truncated) description, **all public comments**, and linked **changesets**.
   Private notes and private issues are never sent, regardless of permissions.
