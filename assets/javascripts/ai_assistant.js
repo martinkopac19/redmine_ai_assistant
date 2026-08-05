@@ -14,7 +14,7 @@
     return meta ? meta.getAttribute('content') : '';
   }
 
-  function post(path, payload) {
+  function post(path, payload, signal) {
     return fetch((CFG.base || '') + path, {
       method: 'POST',
       credentials: 'same-origin',
@@ -23,7 +23,8 @@
         'Accept': 'application/json',
         'X-CSRF-Token': csrfToken()
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: signal || null
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
         // Chyba prichádza ako HTTP 4xx/5xx s JSON správou, nie ako text návrhu.
@@ -117,27 +118,71 @@
     }
   }
 
+  /* Zrušenie generovania (missclick). Krížik je vedľa "Generujem…" a odpáli
+   * AbortController, ktorý držíme na scope elemente.
+   *
+   * Pozn.: volanie u Gemini sa tým nezastaví — zahodíme len odpoveď, takže sa
+   * do komentára nič nevloží. Spotrebované volanie z hodinového limitu preto
+   * zostáva spotrebované. */
+  function toggleCancel(scope, visible) {
+    var x = scope.querySelector('.ai-assistant-cancel');
+    if (x) { x.hidden = !visible; }
+  }
+
+  function abortPending(scope) {
+    if (scope._raaAbort) {
+      scope._raaAbort.abort();
+      scope._raaAbort = null;
+    }
+  }
+
   document.addEventListener('click', function (event) {
+    var scope;
+
+    var cancelBtn = event.target.closest('.ai-assistant-cancel[data-raa="cancel"]');
+    if (cancelBtn) {
+      event.preventDefault();
+      scope = cancelBtn.closest('.ai-assistant-actions');
+      if (scope) { abortPending(scope); }
+      return;
+    }
+
     var btn = event.target.closest('.ai-assistant-btn[data-raa="suggest"]');
     if (!btn) { return; }
     event.preventDefault();
 
-    var scope = btn.closest('.ai-assistant-actions');
+    scope = btn.closest('.ai-assistant-actions');
     if (!scope) { return; }
+
+    // Aby po dvoch kliknutiach nevisela stará požiadavka.
+    abortPending(scope);
+
+    var controller = window.AbortController ? new window.AbortController() : null;
+    scope._raaAbort = controller;
 
     btn.disabled = true;
     setStatus(scope, btn.getAttribute('data-working') || '', false);
+    // Bez AbortControlleru sa zrušiť nedá, tak krížik ani neukazujeme.
+    toggleCancel(scope, !!controller);
 
-    post(CFG.suggestPath, { issue_id: scope.getAttribute('data-issue-id') })
+    post(CFG.suggestPath, { issue_id: scope.getAttribute('data-issue-id') },
+         controller && controller.signal)
       .then(function (data) {
         insertText(data.text);
         setStatus(scope, '', false);
       })
       .catch(function (err) {
+        // Zrušenie nie je chyba — status len zmizne, nič sa nevloží.
+        if (err && err.name === 'AbortError') {
+          setStatus(scope, '', false);
+          return;
+        }
         setStatus(scope, err.message, true);
       })
       .finally(function () {
         btn.disabled = false;
+        toggleCancel(scope, false);
+        if (scope._raaAbort === controller) { scope._raaAbort = null; }
       });
   });
 })();

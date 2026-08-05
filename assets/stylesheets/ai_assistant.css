@@ -52,9 +52,46 @@ button.ai-assistant-btn svg {
   stroke: var(--previo-grey500, #515151);
 }
 
+.ai-assistant-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .ai-assistant-status {
   font-size: 0.8rem;
   color: var(--previo-grey500, #515151);
+}
+
+/* Krížik na zrušenie generovania — nie je to sekundárne tlačidlo témy, ale
+ * drobná ikona pri texte "Generujem…", takže bez rámika a výplne. */
+button.ai-assistant-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: var(--previo-grey500, #515151);
+  cursor: pointer;
+  line-height: 1;
+}
+
+button.ai-assistant-cancel:hover {
+  background: var(--previo-grey100, #f0f0f0);
+  color: var(--previo-grey600, #3d3d3d);
+}
+
+button.ai-assistant-cancel svg {
+  stroke: currentColor;
+}
+
+/* `hidden` na <button> prehráva display z pravidla vyššie, preto explicitne. */
+button.ai-assistant-cancel[hidden] {
+  display: none;
 }
 
 .ai-assistant-status.ai-assistant-error {

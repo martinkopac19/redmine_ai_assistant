@@ -1,6 +1,7 @@
 en:
   ai_assistant:
     working: "Generating…"
+    cancel: "Cancel generating"
     button_suggest: "AI reply suggestion"
 
     error_disabled: "The AI assistant is disabled in the administration."

@@ -18,6 +18,19 @@
       </svg>
       <%= l(:'ai_assistant.button_suggest') %>
     </button>
-    <span class="ai-assistant-status" role="status" aria-live="polite"></span>
+    <%# Status a "×" držíme spolu, aby krížik čítal ako súčasť "Generujem…".
+        Status zostáva viditeľný vždy (píšu sa doňho aj chyby), skrýva sa len
+        tlačidlo zrušenia. %>
+    <span class="ai-assistant-progress">
+      <span class="ai-assistant-status" role="status" aria-live="polite"></span>
+      <button type="button" class="ai-assistant-cancel" data-raa="cancel" hidden
+              title="<%= l(:'ai_assistant.cancel') %>"
+              aria-label="<%= l(:'ai_assistant.cancel') %>">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+             stroke-width="3" stroke-linecap="round" aria-hidden="true">
+          <path d="M5 5l14 14M19 5L5 19" />
+        </svg>
+      </button>
+    </span>
   </span>
 <% end %>

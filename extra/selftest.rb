@@ -168,7 +168,7 @@ begin
   end
 
   puts "\n[8] Lokalizacie"
-  keys = %w[working button_suggest
+  keys = %w[working cancel button_suggest
             error_disabled error_no_key error_invalid_key error_unavailable
             error_rate_limited error_provider_rate_limited error_blocked error_truncated
             error_timeout error_unreachable error_generic
@@ -189,7 +189,8 @@ begin
   if issue
     h = ApplicationController.render(partial: 'ai_assistant/issue_actions',
                                      locals: { issue: issue })
-    puts "  issue_actions              : OK (#{h.length} B), tlacidlo #{ok(h.include?('data-raa'))}"
+    puts "  issue_actions              : OK (#{h.length} B), tlacidlo #{ok(h.include?('data-raa="suggest"'))}"
+    puts "  krizik na zrusenie         : #{ok(h.include?('data-raa="cancel"') && h.include?('hidden'))}"
   end
 
   # --- 10. Gemini klient: realna HTTP cesta -------------------------------

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3 — 2026-08-05
+
+- A **cancel “×”** now sits next to the *Generating…* status, for misclicks. It
+  aborts the request (`AbortController`), so nothing is inserted into the comment
+  field. The call already sent to Gemini is not stopped and still counts against
+  the hourly limit — but the next click on the same issue comes from the cache.
+
 ## 0.2.2 — 2026-08-05
 
 - **Fix: the page jumped up to the description after generating a suggestion.**

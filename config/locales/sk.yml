@@ -1,6 +1,7 @@
 sk:
   ai_assistant:
     working: "Generujem…"
+    cancel: "Zrušiť generovanie"
     button_suggest: "AI návrh odpovede"
 
     error_disabled: "AI asistent je vypnutý v administrácii."
