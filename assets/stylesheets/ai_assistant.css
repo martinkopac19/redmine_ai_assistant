@@ -1,0 +1,69 @@
+/* Tlačidlo vedľa "Add comment" (.re-comment-submit z redmine_rich_editor).
+ *
+ * Vizuál = sekundárne tlačidlo témy Previo (biele, grey200 rámik, radius 8,
+ * hover = inset tieň) — rovnako ako Edit / Log time / Watch / Copy.
+ * Veľkosť = rovnaká ako "Add comment" (min-height 34px, padding 0 20px,
+ * font-size 0.9rem), aby vedľa neho sedelo v jednej línii.
+ *
+ * POZOR: štýlujeme výhradne vlastnú triedu. Téma Previo výslovne varuje pred
+ * plošným štýlovaním <button> — WYSIWYG toolbar používa background-image
+ * sprite ikonky a shorthand `background` by ich zmazal.
+ */
+.ai-assistant-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  margin-inline-start: 8px;
+  vertical-align: top;
+}
+
+button.ai-assistant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid var(--previo-grey200, #e5e5e5);
+  border-radius: var(--previo-radius, 8px);
+  color: var(--previo-grey600, #3d3d3d);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+button.ai-assistant-btn:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--previo-grey300, #cccccc);
+  background: var(--previo-grey50, #fafafa);
+}
+
+button.ai-assistant-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.ai-assistant-btn svg {
+  flex: 0 0 auto;
+  stroke: var(--previo-grey500, #515151);
+}
+
+.ai-assistant-status {
+  font-size: 0.8rem;
+  color: var(--previo-grey500, #515151);
+}
+
+.ai-assistant-status.ai-assistant-error {
+  color: var(--previo-negative, #a30000);
+  font-weight: 500;
+}
+
+.ai-assistant-hint {
+  font-size: 0.9em;
+  color: #888;
+  margin: 0.3em 0 0.8em 0;
+}

@@ -1,0 +1,23 @@
+<%
+  # Renderuje sa v hooku view_issues_edit_notes_bottom (jediný hook vo formulári
+  # úlohy). JS ho presunie vedľa tlačidla "Add comment", ktoré vytvára plugin
+  # redmine_rich_editor — tým sa zároveň stane viditeľným bez klikania na Upraviť.
+  issue = defined?(issue) ? issue : nil
+%>
+
+<% if RedmineAiAssistant.available_for_memo?(issue) %>
+  <span class="ai-assistant-actions" data-issue-id="<%= issue.id %>">
+    <button type="button" class="ai-assistant-btn" data-raa="suggest"
+            data-working="<%= l(:'ai_assistant.working') %>">
+      <%# Ikona + popisok, ako ostatné sekundárne tlačidlá témy (Edit, Watch…). %>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+        <path d="M18 16.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
+      </svg>
+      <%= l(:'ai_assistant.button_suggest') %>
+    </button>
+    <span class="ai-assistant-status" role="status" aria-live="polite"></span>
+  </span>
+<% end %>

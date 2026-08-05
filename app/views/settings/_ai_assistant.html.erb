@@ -1,0 +1,110 @@
+<div class="box tabular settings">
+  <fieldset>
+    <legend><%= l(:'ai_assistant.legend_key') %></legend>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_api_key') %></label>
+      <%#
+        POZOR: hodnota sa tu NIKDY nesmie vypisovať.
+        `password_field_tag 'x', settings['api_key']` by vykreslil
+        <input type="password" value="SKUTOCNY_KLUC"> — type="password" maskuje
+        kľúč len vizuálne, v HTML je celý a vidno ho cez Inspect element.
+        Preto je pole vždy prázdne; prázdne pole existujúci kľúč nezmaže
+        (dopĺňa ho RedmineAiAssistant::KeyStore pri ukladaní).
+      %>
+      <%= password_field_tag 'settings[api_key]', nil,
+            :size => 50, :autocomplete => 'off', :id => 'ai_assistant_api_key' %>
+      <em class="info">
+        <% if RedmineAiAssistant::KeyStore.present? %>
+          <strong><%= l(:'ai_assistant.key_set',
+                        :hint => RedmineAiAssistant::KeyStore.hint) %></strong><br />
+        <% else %>
+          <strong><%= l(:'ai_assistant.key_missing') %></strong><br />
+        <% end %>
+        <%= l(:'ai_assistant.setting_api_key_info') %>
+      </em>
+    </p>
+
+    <% if RedmineAiAssistant::KeyStore.present? %>
+      <p>
+        <label><%= l(:'ai_assistant.setting_api_key_clear') %></label>
+        <%= check_box_tag 'settings[api_key_clear]', '1', false %>
+        <em class="info"><%= l(:'ai_assistant.setting_api_key_clear_info') %></em>
+      </p>
+    <% end %>
+  </fieldset>
+
+  <fieldset>
+    <legend><%= l(:'ai_assistant.legend_general') %></legend>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_enabled') %></label>
+      <%= hidden_field_tag 'settings[enabled]', '0' %>
+      <%= check_box_tag 'settings[enabled]', '1', settings['enabled'].to_s == '1' %>
+      <em class="info"><%= l(:'ai_assistant.setting_enabled_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_gdpr_ack') %></label>
+      <%= hidden_field_tag 'settings[gdpr_ack]', '0' %>
+      <%= check_box_tag 'settings[gdpr_ack]', '1', settings['gdpr_ack'].to_s == '1' %>
+      <em class="info"><%= l(:'ai_assistant.setting_gdpr_ack_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_model') %></label>
+      <%= text_field_tag 'settings[model]', settings['model'], :size => 40 %>
+      <em class="info"><%= l(:'ai_assistant.setting_model_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_max_tokens') %></label>
+      <%= text_field_tag 'settings[max_tokens]', settings['max_tokens'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_max_tokens_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_rate_limit') %></label>
+      <%= text_field_tag 'settings[rate_limit_per_hour]', settings['rate_limit_per_hour'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_rate_limit_info') %></em>
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend><%= l(:'ai_assistant.legend_context') %></legend>
+
+    <p class="ai-assistant-hint"><%= l(:'ai_assistant.context_note') %></p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_description_limit') %></label>
+      <%= text_field_tag 'settings[description_limit]', settings['description_limit'], :size => 8 %>
+    </p>
+
+    <%#
+      DOČASNE VYPNUTÉ: čítanie merge requestov je v backlogu, takže toto
+      nastavenie zatiaľ nemá čo ladiť. Commity sa do kontextu stále pridávajú —
+      platí default z RedmineAiAssistant::DEFAULTS ('changeset_limit' => '5').
+      Keďže pole nie je vo formulári, pri uložení sa nezapíše a hodnota sa berie
+      z defaultu. Znovu zapnutie = zmazať `if false`.
+
+      Pozn.: `<%# … %>` sa tu použiť nedá — ERB komentár končí pri prvom `%>`,
+      takže vnútorné tagy by z komentára vypadli a pole by sa renderovalo ďalej.
+    %>
+    <% if false %>
+      <p>
+        <label><%= l(:'ai_assistant.setting_changeset_limit') %></label>
+        <%= text_field_tag 'settings[changeset_limit]', settings['changeset_limit'], :size => 8 %>
+        <em class="info"><%= l(:'ai_assistant.setting_changeset_limit_info') %></em>
+      </p>
+    <% end %>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_system_prompt') %></label>
+      <%= text_area_tag 'settings[system_prompt]', settings['system_prompt'],
+            :rows => 14, :style => 'width:44em;' %>
+      <em class="info"><%= l(:'ai_assistant.setting_system_prompt_info') %></em>
+    </p>
+  </fieldset>
+
+  <p class="ai-assistant-hint"><%= l(:'ai_assistant.setting_gdpr_warning') %></p>
+</div>
