@@ -96,6 +96,7 @@ begin
                                             !html.match?(/id="ai_assistant_api_key"[^>]*value=/))}"
   puts "  zobrazuje sa len hint      : #{ok(html.include?('abcd'))}"
   puts "  gdpr_ack checkbox je zruseny: #{ok(!html.include?('gdpr_ack'))}"
+  puts "  GDPR poznamka je zrusena   : #{ok(!html.include?('GDPR'))}"
 
   # --- 5. gating ----------------------------------------------------------
   puts "\n[5] Gating (zapnute + kluc)"
@@ -177,8 +178,7 @@ begin
             setting_enabled setting_enabled_info
             setting_model setting_model_info setting_max_tokens setting_max_tokens_info
             setting_rate_limit setting_rate_limit_info
-            setting_description_limit setting_changeset_limit setting_system_prompt
-            setting_gdpr_warning]
+            setting_description_limit setting_changeset_limit setting_system_prompt]
   %w[sk cs en].each do |loc|
     missing = keys.reject { |k| I18n.t("ai_assistant.#{k}", locale: loc, default: nil).present? }
     puts "  #{loc}: #{missing.empty? ? 'OK' : "!! chybaju: #{missing.join(', ')}"}"

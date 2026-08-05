@@ -40,4 +40,3 @@ en:
     setting_changeset_limit_info: "Native changesets from the issue's repository. Skipped when the project has none."
     setting_system_prompt: "System prompt (persona)"
     setting_system_prompt_info: "{{NAME}} is replaced with the signed-in user's name."
-    setting_gdpr_warning: "GDPR: issue and comment content leaves Redmine and goes to Google Gemini outside the EU. Private notes and private issues are never sent. Before rolling this out to the whole team, confirm a data processing agreement exists."

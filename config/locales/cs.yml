@@ -40,4 +40,3 @@ cs:
     setting_changeset_limit_info: "Nativní changesety z repozitáře úkolu. Pokud projekt repozitář nemá, sekce se vynechá."
     setting_system_prompt: "Systémový prompt (persona)"
     setting_system_prompt_info: "{{NAME}} se nahradí jménem přihlášeného uživatele."
-    setting_gdpr_warning: "GDPR: obsah úkolů a komentářů opouští Redmine a jde do Google Gemini mimo EU. Privátní poznámky a privátní úkoly se neposílají nikdy. Před nasazením pro celý tým ověř, zda existuje smlouva o zpracování údajů."

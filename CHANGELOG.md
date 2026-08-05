@@ -2,12 +2,12 @@
 
 ## 0.2.1 — 2026-08-05
 
-- Removed the **data-transfer acknowledgement** checkbox from the plugin
-  configuration. The plugin is now gated by the stored key plus the enable switch
-  only; off is still the default. Migration `005` drops the stored `gdpr_ack`
-  value so it cannot linger as a dead setting.
-- The GDPR note under the configuration form stays — the privacy behaviour itself
-  is unchanged: private notes and private issues are still never sent.
+- Removed the **data-transfer acknowledgement** checkbox and the GDPR note from
+  the plugin configuration. The plugin is now gated by the stored key plus the
+  enable switch only; off is still the default. Migration `005` drops the stored
+  `gdpr_ack` value so it cannot linger as a dead setting.
+- The privacy behaviour itself is unchanged: private notes and private issues are
+  still never sent, and the reasoning is documented in the README.
 
 ## 0.2.0 — 2026-08-05
 
