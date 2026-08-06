@@ -184,9 +184,10 @@ button#raa-close:hover {
 }
 
 #raa-body {
-  padding: 16px;
+  padding: 16px 18px;
   overflow-y: auto;
-  /* Model vracia obyčajný text s odrážkami — zalomenie musí zostať zachované. */
+  /* Platí pre stavy a chyby (vkladané ako čistý text). Vyrenderované zhrnutie
+   * je z blokových prvkov, tam pre-wrap nič nekazí. */
   white-space: pre-wrap;
   font-size: 0.92rem;
   line-height: 1.55;
@@ -196,4 +197,48 @@ button#raa-close:hover {
 #raa-body.raa-error {
   color: var(--previo-negative, #a30000);
   font-weight: 500;
+}
+
+/* Vyrenderovaný Markdown zhrnutia. Selektory sú scopované do #raa-body, takže
+ * neprebíjajú Redmine ani tému. */
+#raa-body.raa-rich {
+  white-space: normal;
+}
+
+#raa-body .raa-h {
+  margin: 18px 0 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--previo-grey700, #1f1f1f);
+}
+
+#raa-body .raa-h:first-child {
+  margin-top: 0;
+}
+
+#raa-body .raa-p {
+  margin: 0 0 8px;
+}
+
+#raa-body .raa-list {
+  margin: 0 0 8px;
+  padding-inline-start: 20px;
+  list-style: disc;
+}
+
+#raa-body .raa-list li {
+  margin: 0 0 3px;
+}
+
+#raa-body strong {
+  font-weight: 600;
+  color: var(--previo-grey700, #1f1f1f);
+}
+
+#raa-body code {
+  padding: 1px 4px;
+  background: var(--previo-grey100, #f0f0f0);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86em;
 }

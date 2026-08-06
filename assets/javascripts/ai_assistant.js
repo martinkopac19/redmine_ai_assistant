@@ -291,12 +291,84 @@
     return ov && ov.overlay.style.display !== 'none';
   }
 
-  function setOverlayText(text, isError) {
+  /* Model vracia Markdown (**nadpis**, `kód`, odrážky). Vykresľujeme ho tak, že
+   * SKLADÁME DOM NODY — nikdy `innerHTML`. Výstup modelu je nedôveryhodný vstup
+   * a `innerHTML` by z neho spravil HTML vrátane <script> a onerror atribútov.
+   *
+   * Zámerne podporujeme len to, čo zhrnutie naozaj používa: **bold**, `kód`,
+   * odrážky a riadok, ktorý je celý bold (nadpis sekcie). Zvyšok Markdownu
+   * zostane textom — to je bezpečnejšie než vlastný neúplný parser. */
+  var INLINE_RE = /\*\*([^*]+)\*\*|`([^`]+)`/g;
+
+  function appendInline(parent, text) {
+    var last = 0;
+    var m;
+    INLINE_RE.lastIndex = 0;
+    while ((m = INLINE_RE.exec(text)) !== null) {
+      if (m.index > last) {
+        parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+      }
+      var isBold = m[1] !== undefined;
+      var el = document.createElement(isBold ? 'strong' : 'code');
+      el.textContent = isBold ? m[1] : m[2];
+      parent.appendChild(el);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) {
+      parent.appendChild(document.createTextNode(text.slice(last)));
+    }
+  }
+
+  function renderMarkdownish(container, text) {
+    var lines = String(text || '').split(/\r?\n/);
+    var list = null;
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) { list = null; continue; }
+
+      var bullet = line.match(/^[-*•]\s+(.*)$/);
+      if (bullet) {
+        if (!list) {
+          list = document.createElement('ul');
+          list.className = 'raa-list';
+          container.appendChild(list);
+        }
+        var li = document.createElement('li');
+        appendInline(li, bullet[1]);
+        list.appendChild(li);
+        continue;
+      }
+      list = null;
+
+      // Celý riadok bold (aj s dvojbodkou) alebo ATX heading = nadpis sekcie.
+      var head = line.match(/^\*\*([^*]+)\*\*:?$/) || line.match(/^#{1,4}\s+(.*)$/);
+      if (head) {
+        var h = document.createElement('h4');
+        h.className = 'raa-h';
+        h.textContent = head[1].trim();
+        container.appendChild(h);
+        continue;
+      }
+
+      var p = document.createElement('p');
+      p.className = 'raa-p';
+      appendInline(p, line);
+      container.appendChild(p);
+    }
+  }
+
+  // `markdown` = false pre stavy a chyby (tam je Markdown nežiaduci).
+  function setOverlayText(text, isError, markdown) {
     var o = buildOverlay();
-    // textContent, NIKDY innerHTML: výstup modelu je nedôveryhodný vstup.
-    // Zalomenie a odrážky drží CSS (white-space: pre-wrap).
-    o.body.textContent = text || '';
+    while (o.body.firstChild) { o.body.removeChild(o.body.firstChild); }
+    if (markdown) {
+      renderMarkdownish(o.body, text);
+    } else {
+      o.body.textContent = text || '';
+    }
     o.body.classList.toggle('raa-error', !!isError);
+    o.body.classList.toggle('raa-rich', !!markdown);
   }
 
   function closeOverlay() {
@@ -341,7 +413,7 @@
     ovOpener = link;
     o.title.textContent = (CFG.i18n && CFG.i18n.summaryTitle ? CFG.i18n.summaryTitle : '%{issue}')
       .replace('%{issue}', link.getAttribute('data-issue-label') || '');
-    setOverlayText(link.getAttribute('data-working') || '', false);
+    setOverlayText(link.getAttribute('data-working') || '', false, false);
     o.overlay.style.display = 'flex';
     focusQuietly(o.close);
 
@@ -353,11 +425,11 @@
          controller && controller.signal)
       .then(function (data) {
         if (controller !== ovAbort) { return; } // medzitým zavreté alebo prekliknuté
-        setOverlayText(data.text, false);
+        setOverlayText(data.text, false, true);
       })
       .catch(function (err) {
         if (err && err.name === 'AbortError') { return; }
-        setOverlayText(err.message, true);
+        setOverlayText(err.message, true, false);
       })
       .finally(function () {
         if (controller === ovAbort) { ovAbort = null; }

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1 — 2026-08-06
+
+- **Fix: the summary showed its Markdown raw** — section headings arrived as
+  `**Kde to stojí**` instead of bold. Headings, bullets and `` `code` `` are now rendered,
+  but by **building DOM nodes** (`createElement` / `createTextNode`), never `innerHTML`:
+  model output is untrusted input, and `innerHTML` would turn it into live HTML.
+  Deliberately narrow — only `**bold**`, inline code, bullets and a fully bold line as a
+  heading; anything else stays text, which beats a half-complete Markdown parser.
+- Added `extra/overlay_test.js`, a jsdom test of the client side (23 assertions): the button
+  really lands between *Edit* and *Log time*, the Markdown renders, `<img onerror=…>` from the
+  model stays text, and the overlay closes on ×, Esc and a click outside.
+
 ## 0.3.0 — 2026-08-06
 
 **AI Summarizer.** A second button — in the issue action bar between *Edit* and *Log time*, with a

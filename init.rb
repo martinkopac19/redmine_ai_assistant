@@ -27,7 +27,7 @@ Redmine::Plugin.register :redmine_ai_assistant do
   name 'AI Assistant (Previo)'
   author 'Martin Kopáč'
   description 'Gemini-powered reply drafts and issue summaries on the issue page, with one shared admin-managed API key.'
-  version '0.3.0'
+  version '0.3.1'
   url 'https://github.com/martinkopac19/redmine_ai_assistant'
   requires_redmine version_or_higher: '5.0'
 
