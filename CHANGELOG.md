@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.2 — 2026-08-06
+
+Two findings from a review of 0.3.1, both about things that only bite later:
+
+- **Fix: editing a prompt appeared to do nothing.** The cache key held the issue and the
+  user but not what was actually being sent, so after changing the summary prompt (or the
+  model, or the description limit) the next click returned the hour-old summary — and the
+  change looked broken. The key now carries a digest of both prompts and the model, so
+  tuning a prompt takes effect on the very next click while genuinely unchanged requests
+  still cost nothing.
+- **Fix: a long summary could not be scrolled by keyboard.** The overlay body scrolls but a
+  plain `<div>` cannot take focus, and the focus trap pinned Tab to the close button, so
+  there was no way to reach the text without a mouse. The body is now focusable and part of
+  the trap, and carries `aria-live="polite"` so a screen reader announces the summary
+  replacing "Generating…".
+
 ## 0.3.1 — 2026-08-06
 
 - **Fix: the summary showed its Markdown raw** — section headings arrived as

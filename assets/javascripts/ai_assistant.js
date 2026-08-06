@@ -268,6 +268,11 @@
 
     var body = document.createElement('div');
     body.id = 'raa-body';
+    // Telo je scrollovateľné, takže MUSÍ byť fokusovateľné — inak sa dlhé
+    // zhrnutie nedá odscrollovať klávesnicou (div bez tabindex fokus nedostane).
+    body.tabIndex = 0;
+    // Obsah sa mení z „Generujem…" na zhrnutie — bez aria-live to čítač neoznámi.
+    body.setAttribute('aria-live', 'polite');
 
     head.appendChild(title);
     head.appendChild(close);
@@ -398,9 +403,15 @@
     }
 
     if (e.key === 'Tab') {
-      // V okne je jediný fokusovateľný prvok (×), takže fokus držíme na ňom.
+      // Focus trap: cyklíme len medzi krížikom a telom (aby sa dalo scrollovať),
+      // fokus z okna neunikne na stránku pod ním.
       e.preventDefault();
-      focusQuietly(ov.close);
+      var order = [ov.close, ov.body];
+      var i = order.indexOf(document.activeElement);
+      var next = e.shiftKey ? i - 1 : i + 1;
+      if (next < 0) { next = order.length - 1; }
+      if (next >= order.length) { next = 0; }
+      focusQuietly(order[next]);
     }
   }, true);
 

@@ -35,16 +35,23 @@ class AiAssistantController < ApplicationController
 
   # Spoločná cesta oboch akcií: cache → hodinový limit → Gemini → cache → JSON.
   #
-  # Cache je per (funkcia, úloha, posledný komentár, užívateľ) — opakované
-  # kliknutie bez zmeny v úlohe negeneruje nový (platený) request. Editácia
-  # popisu vytvorí journal, takže sa kľúč zneplatní aj pri zmene zadania.
-  # `prefix` drží zhrnutie a návrh odpovede oddelene.
+  # Cache je per (funkcia, úloha, posledný komentár, užívateľ, odtlačok toho, čo
+  # sa naozaj odosiela) — opakované kliknutie bez zmeny negeneruje nový (platený)
+  # request. `prefix` drží zhrnutie a návrh odpovede oddelene.
+  #
+  # Odtlačok promptov v kľúči je tam kvôli LADENIU: bez neho by admin zmenil
+  # systémový prompt (alebo model, alebo limit popisu), klikol znova a hodinu
+  # dostával staré zhrnutie — a myslel si, že zmena nefunguje.
   #
   # Hodinový limit je zámerne JEDEN pre obe funkcie — platí sa z jedného
-  # firemného kľúča, takže chráni ten istý rozpočet.
+  # firemného kľúča, takže chráni ten istý rozpočet. Odpoveď z cache limit
+  # nespotrebuje.
   def deliver(prefix, issue, system_prompt, user_prompt)
+    fingerprint = Digest::MD5.hexdigest(
+      [system_prompt, user_prompt, RedmineAiAssistant.setting('model')].join("\x00")
+    )[0, 10]
     cache_key = ["ai_assistant_#{prefix}", issue.id, issue.journals.maximum(:id).to_i,
-                 User.current.id].join(':')
+                 User.current.id, fingerprint].join(':')
     cached = Rails.cache.read(cache_key)
     return render(:json => { :text => cached, :cached => true }) if cached.present?
 

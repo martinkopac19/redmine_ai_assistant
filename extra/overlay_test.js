@@ -120,6 +120,18 @@ setTimeout(function () {
   check('HTML zostalo textom', body.textContent.indexOf('<img src=x onerror=alert(1)>') !== -1);
 
   // --- 5. zatváranie ---
+  // Telo musí byť fokusovateľné (scrollovanie klávesnicou) a Tab nesmie
+  // vypadnúť z okna na stránku pod ním.
+  check('telo je fokusovateľné (tabindex)', body.getAttribute('tabindex') === '0');
+  check('telo má aria-live', body.getAttribute('aria-live') === 'polite');
+  doc.getElementById('raa-close').focus();
+  doc.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+  check('Tab z krížika ide na telo', doc.activeElement === body,
+        doc.activeElement && doc.activeElement.id);
+  doc.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+  check('Tab z tela sa vráti na krížik', doc.activeElement === doc.getElementById('raa-close'),
+        doc.activeElement && doc.activeElement.id);
+
   doc.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   check('Esc zatvorí overlay', overlay.style.display === 'none');
 
