@@ -47,6 +47,12 @@ begin
   puts "  persona ma {{NAME}}        : #{ok(s['system_prompt'].include?('{{NAME}}'))}"
   persona = RedmineAiAssistant.system_prompt_for(user)
   puts "  persona doplnena menom     : #{ok(persona.include?(user.name) && !persona.include?('{{NAME}}'))}"
+  puts "  summary prompt existuje    : #{ok(s['summary_system_prompt'].to_s.length > 100)}"
+  puts "  summary limit popisu       : #{s['summary_description_limit']}"
+  sum_persona = RedmineAiAssistant.system_prompt_for(user, 'summary_system_prompt')
+  puts "  summary persona ma meno    : #{ok(sum_persona.include?(user.name) &&
+                                            !sum_persona.include?('{{NAME}}'))}"
+  puts "  dva ROZDIELNE prompty      : #{ok(sum_persona != persona)}"
 
   # --- 2. sifrovanie -------------------------------------------------------
   puts "\n[2] Sifrovanie kluca"
@@ -121,10 +127,15 @@ begin
                .distinct.first
   if issue
     body = RedmineAiAssistant::ContextBuilder.suggestion_prompt(issue, RedmineAiAssistant.settings)
+    sbody = RedmineAiAssistant::ContextBuilder.summary_prompt(issue, RedmineAiAssistant.settings)
     priv = issue.journals.where(private_notes: true).where.not(notes: [nil, '']).pluck(:notes)
     leaked = priv.select { |n| body.include?(n.to_s.strip) }
+    # Zhrnutie ide tou istou cestou, ale kontrolujeme ho SAMOSTATNE — filtre sú
+    # v spoločnej časti, no práve preto sa nesmie stať, že sa jedna vetva rozíde.
+    leaked_sum = priv.select { |n| sbody.include?(n.to_s.strip) }
     puts "  uloha ##{issue.id}, privatnych poznamok: #{priv.size}"
     puts "  ziadna privatna v prompte  : #{ok(leaked.empty?)}"
+    puts "  ziadna privatna v zhrnuti  : #{ok(leaked_sum.empty?)}"
   end
 
   public_issue = Issue.visible(user).where(is_private: false)
@@ -157,9 +168,43 @@ begin
     puts '  (nenasla sa uloha s 8+ verejnymi komentarmi)'
   end
 
+  # --- 6b. zhrnutie: prompt a limity --------------------------------------
+  puts "\n[6b] Prompt pre zhrnutie"
+  # POZOR: `issues.description` s prefixom — Issue.visible joinuje projects
+  # a enabled_modules, a `description` má aj projects → PG::AmbiguousColumn.
+  long = Issue.visible(user).where(is_private: false)
+              .where('LENGTH(issues.description) > 2000').first
+  if long
+    st = RedmineAiAssistant.settings
+    reply  = RedmineAiAssistant::ContextBuilder.suggestion_prompt(long, st)
+    summ   = RedmineAiAssistant::ContextBuilder.summary_prompt(long, st)
+    # Vlastný limit sa musí naozaj aplikovať: 600 vs 4000 znakov popisu.
+    puts "  uloha ##{long.id}, popis #{long.description.to_s.length} znakov"
+    puts "  zhrnutie ma dlhsi kontext  : #{ok(summ.length > reply.length)} " \
+         "(#{summ.length} vs #{reply.length})"
+    # V zhrnutí NESMIE byť blok „Zadání" — inštrukciu nesie system prompt.
+    puts "  zhrnutie bez bloku Zadani  : #{ok(!summ.include?('## Zadání'))}"
+    puts "  odpoved MA blok Zadani     : #{ok(reply.include?('## Zadání'))}"
+    # Limit 0 = neskracovať.
+    full = RedmineAiAssistant::ContextBuilder.summary_prompt(
+      long, st.merge('summary_description_limit' => '0')
+    )
+    puts "  limit 0 = cely popis       : #{ok(full.include?(long.description.to_s.strip))}"
+  else
+    puts '  (nenasla sa uloha s popisom > 2000 znakov)'
+  end
+
+  # Refaktor nesmie zmeniť prompt pre odpoveď — porovnanie so zloženim „ručne".
+  if public_issue
+    st = RedmineAiAssistant.settings
+    rebuilt = RedmineAiAssistant::ContextBuilder.suggestion_prompt(public_issue, st)
+    puts "  odpoved: hlavicka + popis  : #{ok(rebuilt.start_with?("# Úloha ##{public_issue.id}:"))}"
+    puts "  odpoved: cesky pokyn       : #{ok(rebuilt.include?('Odpověď musí být v češtině'))}"
+  end
+
   # --- 7. routy a lokalizacie ---------------------------------------------
   puts "\n[7] Routy"
-  %w[ai_assistant_suggest_path].each do |helper|
+  %w[ai_assistant_suggest_path ai_assistant_summary_path].each do |helper|
     puts "  #{helper.ljust(34)} #{ok(Rails.application.routes.url_helpers.respond_to?(helper))}"
   end
   [:ai_assistant_credential_path, :ai_assistant_translate_path,
@@ -169,16 +214,20 @@ begin
 
   puts "\n[8] Lokalizacie"
   keys = %w[working cancel button_suggest
+            button_summary summary_working summary_title close
             error_disabled error_no_key error_invalid_key error_unavailable
             error_rate_limited error_provider_rate_limited error_blocked error_truncated
             error_timeout error_unreachable error_generic
-            legend_key legend_general legend_context context_note
+            legend_key legend_general legend_reply reply_note legend_summary summary_note
             setting_api_key setting_api_key_info setting_api_key_clear
             setting_api_key_clear_info key_set key_missing
             setting_enabled setting_enabled_info
             setting_model setting_model_info setting_max_tokens setting_max_tokens_info
             setting_rate_limit setting_rate_limit_info
-            setting_description_limit setting_changeset_limit setting_system_prompt]
+            setting_description_limit setting_description_limit_info
+            setting_changeset_limit setting_system_prompt setting_system_prompt_info
+            setting_summary_description_limit setting_summary_description_limit_info
+            setting_summary_system_prompt setting_summary_system_prompt_info]
   %w[sk cs en].each do |loc|
     missing = keys.reject { |k| I18n.t("ai_assistant.#{k}", locale: loc, default: nil).present? }
     puts "  #{loc}: #{missing.empty? ? 'OK' : "!! chybaju: #{missing.join(', ')}"}"
@@ -191,7 +240,24 @@ begin
                                      locals: { issue: issue })
     puts "  issue_actions              : OK (#{h.length} B), tlacidlo #{ok(h.include?('data-raa="suggest"'))}"
     puts "  krizik na zrusenie         : #{ok(h.include?('data-raa="cancel"') && h.include?('hidden'))}"
+
+    b = ApplicationController.render(partial: 'ai_assistant/issue_summary_button',
+                                     locals: { issue: issue })
+    puts "  summary_button             : OK (#{b.length} B), tlacidlo #{ok(b.include?('data-raa="summary"'))}"
+    # Odkaz s triedou .icon, nie <button> — inak by nezdedil vzhľad z témy.
+    puts "  je to <a class='icon'>     : #{ok(b.include?('<a href="#" class="icon') &&
+                                              !b.include?('<button'))}"
+    puts "  ikona prutika (inline SVG) : #{ok(b.include?('<svg') && b.include?('currentColor'))}"
+    puts "  data-issue-label pre nadpis: #{ok(b.include?('data-issue-label'))}"
   end
+
+  # Konfiguračná stránka musí obsahovať OBA prompty a oba limity.
+  cfg = ApplicationController.render(partial: 'settings/ai_assistant',
+                                     locals: { settings: RedmineAiAssistant.settings })
+  puts "  konfig: prompt odpovede    : #{ok(cfg.include?('settings[system_prompt]'))}"
+  puts "  konfig: prompt zhrnutia    : #{ok(cfg.include?('settings[summary_system_prompt]'))}"
+  puts "  konfig: limit odpovede     : #{ok(cfg.include?('settings[description_limit]'))}"
+  puts "  konfig: limit zhrnutia     : #{ok(cfg.include?('settings[summary_description_limit]'))}"
 
   # --- 10. Gemini klient: realna HTTP cesta -------------------------------
   puts "\n[10] Gemini klient — HTTP cesta (zamerne neplatny kluc)"

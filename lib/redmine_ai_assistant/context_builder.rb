@@ -12,6 +12,30 @@ module RedmineAiAssistant
 
     class << self
       def suggestion_prompt(issue, settings = RedmineAiAssistant.settings)
+        parts = issue_context(issue, settings,
+                              :description_limit => settings['description_limit'].to_i)
+
+        parts << "\n## Zadání\nNapiš stručnou a věcnou odpověď na poslední komentář " \
+                 'nebo na zmínku o tobě. Odpověď musí být v češtině a připravená ' \
+                 'k přímému vložení do Redmine.'
+
+        parts.join("\n")
+      end
+
+      # Zhrnutie dostane ten istý kontext, len s vlastným limitom popisu — a BEZ
+      # bloku „Zadání". Čo má model spraviť a v akej forme, drží celé
+      # nastavenie `summary_system_prompt`, aby sa to dalo zmeniť v konfigurácii.
+      def summary_prompt(issue, settings = RedmineAiAssistant.settings)
+        issue_context(issue, settings,
+                      :description_limit => settings['summary_description_limit'].to_i)
+          .join("\n")
+      end
+
+      private
+
+      # Spoločná časť oboch promptov — a tým jediné miesto, kde sa rozhoduje,
+      # čo opustí Redmine (vrátane GDPR filtrov nižšie).
+      def issue_context(issue, settings, description_limit:)
         parts = []
         parts << "# Úloha ##{issue.id}: #{issue.subject}"
         parts << [
@@ -23,7 +47,9 @@ module RedmineAiAssistant
 
         description = issue.description.to_s.strip
         if description.present?
-          parts << "\n## Popis\n#{description.truncate(settings['description_limit'].to_i)}"
+          # 0 alebo mínus = neskracovať (celý popis).
+          description = description.truncate(description_limit) if description_limit.positive?
+          parts << "\n## Popis\n#{description}"
         end
 
         notes = public_notes(issue)
@@ -32,14 +58,8 @@ module RedmineAiAssistant
         commits = changesets(issue, settings['changeset_limit'].to_i)
         parts << "\n## Související commity\n" + commits.join("\n") if commits.any?
 
-        parts << "\n## Zadání\nNapiš stručnou a věcnou odpověď na poslední komentář " \
-                 'nebo na zmínku o tobě. Odpověď musí být v češtině a připravená ' \
-                 'k přímému vložení do Redmine.'
-
-        parts.join("\n")
+        parts
       end
-
-      private
 
       # GDPR: privátne poznámky sa neposielajú NIKDY — ani keď na ne má
       # užívateľ právo. Externá služba o nich nemá vedieť.

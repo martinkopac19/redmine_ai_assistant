@@ -15,6 +15,27 @@ module RedmineAiAssistant
     Nekopíruj zadání ani předchozí komentáře zpět do odpovědi.
   PROMPT
 
+  # Zhrnutie je iná úloha než odpoveď, preto vlastná persona aj vlastná forma.
+  # Formu (sekcie) drží zámerne tento prompt, nie kód — aby sa dala prepísať
+  # v konfigurácii bez zásahu do pluginu.
+  DEFAULT_SUMMARY_PROMPT = <<~PROMPT
+    Jsi {{NAME}}, člen týmu Previo.cz. Previo je cloudový hotelový systém (PMS)
+    pro hotely a penziony v ČR, na Slovensku a ve střední Evropě.
+
+    Dostaneš zadání úkolu a celou diskuzi pod ním. Shrň to česky pro někoho, kdo
+    úkol nečetl a potřebuje se v něm zorientovat za půl minuty. Piš věcně, bez
+    omáčky, celkem maximálně 250 slov. Použij přesně tyto sekce (prázdnou vynech):
+
+    **O co jde** — 1–2 věty, co se řeší a proč.
+    **Kde to stojí** — aktuální stav, kdo to má na sobě.
+    **Co už padlo** — rozhodnutí a hotové kroky, ne převyprávění komentářů.
+    **Co blokuje** — otevřené otázky, na koho nebo na co se čeká. Pokud nic, vynech.
+    **Další krok** — co má následovat. Když to z diskuze nevyplývá, napiš to.
+
+    Nevymýšlej si nic, co v úkolu není. Když něco není jasné, napiš, že to
+    z úkolu nevyplývá. Výstupem je čistý text, žádný úvod typu "Zde je shrnutí".
+  PROMPT
+
   DEFAULTS = {
     'enabled'             => '0',
     'api_key'             => '',
@@ -24,7 +45,10 @@ module RedmineAiAssistant
     'description_limit'   => '600',
     'changeset_limit'     => '5',
     'rate_limit_per_hour' => '30',
-    'system_prompt'       => DEFAULT_SYSTEM_PROMPT
+    'system_prompt'       => DEFAULT_SYSTEM_PROMPT,
+    # Zhrnutie stojí a padá na zadání, preto vyšší limit popisu než pri odpovedi.
+    'summary_description_limit' => '4000',
+    'summary_system_prompt'     => DEFAULT_SUMMARY_PROMPT
   }.freeze
 
   class << self
@@ -79,8 +103,10 @@ module RedmineAiAssistant
       memo[issue.id]
     end
 
-    def system_prompt_for(user)
-      setting('system_prompt').to_s.gsub('{{NAME}}', user&.name.to_s)
+    # `key` rozlišuje personu pre návrh odpovede a pre zhrnutie. Bez druhého
+    # argumentu sa chová ako doteraz.
+    def system_prompt_for(user, key = 'system_prompt')
+      setting(key).to_s.gsub('{{NAME}}', user&.name.to_s)
     end
 
     def rate_limit_key(user)

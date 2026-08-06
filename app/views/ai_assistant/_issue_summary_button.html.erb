@@ -1,0 +1,27 @@
+<%
+  # Renderuje sa v hooku view_issues_show_details_bottom (vždy viditeľný blok
+  # detailu). JS ho presunie do lišty akcií medzi „Upraviť" a „Zapísať čas".
+  issue = defined?(issue) ? issue : nil
+%>
+
+<% if RedmineAiAssistant.available_for_memo?(issue) %>
+  <%#
+    ODKAZ, nie <button>: téma Previo štýluje `.contextual a.icon`, takže tlačidlo
+    dostane vzhľad ostatných (Upraviť / Zapísať čas / Sledovať) zadarmo. Téma
+    zároveň výslovne varuje pred plošným štýlovaním <button> — shorthand
+    `background` by zmazal sprite ikonky WYSIWYG toolbaru.
+
+    Ikonka je inline SVG: v Redmine sprite (224 symbolov) prútik ani iskričky
+    nie sú. `stroke: currentColor` → zafarbí ju pravidlo témy `.contextual a.icon svg`.
+  %>
+  <a href="#" class="icon icon-ai-wand ai-assistant-summary-link"
+     data-raa="summary" data-issue-id="<%= issue.id %>"
+     data-issue-label="<%= "##{issue.id}: #{issue.subject}" %>"
+     data-working="<%= l(:'ai_assistant.summary_working') %>">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 4V2M15 10V8M11.5 6h-2M20.5 6h-2M17.1 3.9l1.4-1.4M17.1 8.1l1.4 1.4M12.9 3.9 11.5 2.5M4 20l9-9" />
+    </svg>
+    <span class="icon-label"><%= l(:'ai_assistant.button_summary') %></span>
+  </a>
+<% end %>

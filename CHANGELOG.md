@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.0 — 2026-08-06
+
+**AI Summarizer.** A second button — in the issue action bar between *Edit* and *Log time*, with a
+wand icon — opens an overlay above the issue holding a summary of the **description and every
+public comment**. On a 30-comment issue that is the difference between reading the thread and
+knowing where it stands. The summary is only displayed: it is never inserted anywhere, and the
+plugin still writes nothing to Redmine.
+
+- The overlay closes with **×**, **Esc** or a click outside, and closing it **aborts the request**,
+  so a misclick costs no waiting. Model output goes into the DOM via `textContent`, never
+  `innerHTML`.
+- **Two separate prompts in the configuration**, each labelled with the button it drives: one for
+  the reply suggestion, one for the summary. The *shape* of the summary (sections, length,
+  language) lives in that prompt rather than in the code, so it can be changed without touching
+  the plugin.
+- **Its own description limit** (default 4000 vs the reply's 600 — a summary stands on the
+  original request, which is exactly what gets truncated otherwise). `0` means no truncation.
+- The hourly per-user limit is deliberately **one counter for both features** — they bill to the
+  same shared key. Summaries are cached per issue + last comment for an hour, under their own key.
+- Privacy is unchanged and separately asserted for the new path: private notes and private issues
+  never reach the summary either.
+
+No migration needed — the new settings fall back to their defaults on their own.
+
 ## 0.2.3 — 2026-08-05
 
 - A **cancel “×”** now sits next to the *Generating…* status, for misclicks. It

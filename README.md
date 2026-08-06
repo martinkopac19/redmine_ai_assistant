@@ -1,18 +1,39 @@
 # AI Assistant (Previo)
 
-Návrh odpovede a preklad komentárov priamo na detaile úlohy, cez **Google Gemini**.
+Návrh odpovede a zhrnutie úlohy priamo na detaile úlohy, cez **Google Gemini**.
 Nahrádza externý Flask nástroj „Redmine Analytics".
 
 ## Čo to robí
 
-Jedna funkcia: na detaile úlohy je **vedľa tlačidla „Add comment"** sekundárne
-tlačidlo **AI reply suggestion**, ktoré vygeneruje návrh odpovede a vloží ho do
-poľa komentára. Text je pred odoslaním editovateľný.
+**1. Návrh odpovede.** Na detaile úlohy je **vedľa tlačidla „Add comment"**
+sekundárne tlačidlo **AI reply suggestion**, ktoré vygeneruje návrh odpovede
+a vloží ho do poľa komentára. Text je pred odoslaním editovateľný.
+
+**2. AI Summarizer.** V lište akcií úlohy (medzi *Upraviť* a *Zapísať čas*, ikona
+čarovného prútika) je tlačidlo **AI Summarizer**. Otvorí okno nad úlohou so
+zhrnutím **popisu a všetkých verejných komentárov** — zhrnutie sa iba zobrazuje,
+nikam sa nevkladá. Okno sa zatvára krížikom, klávesom Esc alebo klikom mimo;
+zatvorenie počas generovania požiadavku zruší.
 
 Komentár vždy odosiela užívateľ sám, pod svojím účtom. Plugin do Redmine nikdy
 nič nezapíše.
 
-### Umiestnenie tlačidla (a prečo to rieši JS)
+Každá funkcia má v konfigurácii **vlastný systémový prompt** a **vlastný limit
+znakov popisu** (odpoveď 600, zhrnutie 4000 — pri zhrnutí nesie zadanie práve
+popis). Hodinový limit volaní je naopak **jeden pre obe**, lebo sa platí z toho
+istého firemného kľúča.
+
+### Umiestnenie tlačidiel (a prečo to rieši JS)
+
+**AI Summarizer:** lišta *Upraviť / Zapísať čas / Sledovať / Kopírovať* je Redmine
+partial `issues/_action_menu` a **hook v nej žiadny nie je**, takže sa do nej
+serverovo dostať nedá. Tlačidlo sa renderuje v `view_issues_show_details_bottom`
+(vždy viditeľný blok detailu) a JS ho presunie pred *Zapísať čas*. Je to `<a
+class="icon">`, nie `<button>` — téma Previo štýluje `.contextual a.icon`, takže
+vzhľad zdedí, a pred plošným štýlovaním `<button>` téma výslovne varuje. Ikonka je
+inline SVG, lebo v Redmine sprite (224 symbolov) prútik ani iskričky nie sú.
+
+**AI reply suggestion:**
 
 Tlačidlo **„Add comment" nie je z Redmine** — vytvára ho plugin
 `redmine_rich_editor` (`.re-comment-submit` v `.re-comment-box` pod `#history`),

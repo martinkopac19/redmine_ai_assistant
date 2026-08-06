@@ -13,26 +13,49 @@ class AiAssistantController < ApplicationController
     issue = find_available_issue
     return if issue.nil?
 
-    # Cache per (úloha, posledný komentár) — opakované kliknutie bez zmeny
-    # v úlohe negeneruje nový (platený) request.
-    cache_key = ['ai_assistant_suggest', issue.id, issue.journals.maximum(:id).to_i,
+    settings = RedmineAiAssistant.settings
+    deliver('suggest', issue,
+            RedmineAiAssistant.system_prompt_for(User.current),
+            RedmineAiAssistant::ContextBuilder.suggestion_prompt(issue, settings))
+  end
+
+  # Zhrnutie celej úlohy (popis + verejné komentáre). Len sa zobrazí v overlay
+  # okne — nikam sa nevkladá a do Redmine sa nič nezapisuje.
+  def summary
+    issue = find_available_issue
+    return if issue.nil?
+
+    settings = RedmineAiAssistant.settings
+    deliver('summary', issue,
+            RedmineAiAssistant.system_prompt_for(User.current, 'summary_system_prompt'),
+            RedmineAiAssistant::ContextBuilder.summary_prompt(issue, settings))
+  end
+
+  private
+
+  # Spoločná cesta oboch akcií: cache → hodinový limit → Gemini → cache → JSON.
+  #
+  # Cache je per (funkcia, úloha, posledný komentár, užívateľ) — opakované
+  # kliknutie bez zmeny v úlohe negeneruje nový (platený) request. Editácia
+  # popisu vytvorí journal, takže sa kľúč zneplatní aj pri zmene zadania.
+  # `prefix` drží zhrnutie a návrh odpovede oddelene.
+  #
+  # Hodinový limit je zámerne JEDEN pre obe funkcie — platí sa z jedného
+  # firemného kľúča, takže chráni ten istý rozpočet.
+  def deliver(prefix, issue, system_prompt, user_prompt)
+    cache_key = ["ai_assistant_#{prefix}", issue.id, issue.journals.maximum(:id).to_i,
                  User.current.id].join(':')
     cached = Rails.cache.read(cache_key)
     return render(:json => { :text => cached, :cached => true }) if cached.present?
 
     return if rate_limited?
 
-    text = client.complete(
-      RedmineAiAssistant.system_prompt_for(User.current),
-      RedmineAiAssistant::ContextBuilder.suggestion_prompt(issue, RedmineAiAssistant.settings)
-    )
+    text = client.complete(system_prompt, user_prompt)
     Rails.cache.write(cache_key, text, :expires_in => 1.hour)
     render :json => { :text => text }
   rescue RedmineAiAssistant::GeminiClient::Error => e
     render_ai_error(e)
   end
-
-  private
 
   def require_usable
     return if RedmineAiAssistant.usable?

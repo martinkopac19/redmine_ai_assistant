@@ -64,13 +64,14 @@
   </fieldset>
 
   <fieldset>
-    <legend><%= l(:'ai_assistant.legend_context') %></legend>
+    <legend><%= l(:'ai_assistant.legend_reply') %></legend>
 
-    <p class="ai-assistant-hint"><%= l(:'ai_assistant.context_note') %></p>
+    <p class="ai-assistant-hint"><%= l(:'ai_assistant.reply_note') %></p>
 
     <p>
       <label><%= l(:'ai_assistant.setting_description_limit') %></label>
       <%= text_field_tag 'settings[description_limit]', settings['description_limit'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_description_limit_info') %></em>
     </p>
 
     <%#
@@ -96,6 +97,26 @@
       <%= text_area_tag 'settings[system_prompt]', settings['system_prompt'],
             :rows => 14, :style => 'width:44em;' %>
       <em class="info"><%= l(:'ai_assistant.setting_system_prompt_info') %></em>
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend><%= l(:'ai_assistant.legend_summary') %></legend>
+
+    <p class="ai-assistant-hint"><%= l(:'ai_assistant.summary_note') %></p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_summary_description_limit') %></label>
+      <%= text_field_tag 'settings[summary_description_limit]',
+            settings['summary_description_limit'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_summary_description_limit_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_summary_system_prompt') %></label>
+      <%= text_area_tag 'settings[summary_system_prompt]', settings['summary_system_prompt'],
+            :rows => 16, :style => 'width:44em;' %>
+      <em class="info"><%= l(:'ai_assistant.setting_summary_system_prompt_info') %></em>
     </p>
   </fieldset>
 </div>

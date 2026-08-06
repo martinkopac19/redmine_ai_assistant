@@ -75,10 +75,51 @@
     setTimeout(function () { observer.disconnect(); }, 15000);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', watchForCommentBox);
-  } else {
+  /* Tlačidlo "AI Summarizer" patrí do lišty akcií medzi Upraviť a Zapísať čas.
+   * Lišta je Redmine partial `issues/_action_menu` BEZ hooku, takže sa tam
+   * serverovo dostať nedá a presúvame ho JS-om.
+   *
+   * POZOR na selektor: `.contextual` je na stránke viackrát — lišta akcií,
+   * `next-prev-links contextual` (odkazy predchádzajúca/ďalšia) a jeden v bloku
+   * popisu. Berieme prvú, ktorá nie je next-prev-links. */
+  function actionBar() {
+    var bars = document.querySelectorAll('#content > .contextual');
+    for (var i = 0; i < bars.length; i++) {
+      if (!bars[i].classList.contains('next-prev-links')) { return bars[i]; }
+    }
+    return null;
+  }
+
+  function placeSummaryButton() {
+    var link = document.querySelector('a[data-raa="summary"]');
+    if (!link || link.dataset.raaPlaced === '1') { return; }
+
+    var bar = actionBar();
+    if (!bar) { return; }
+
+    // Upraviť aj Zapísať čas sú podmienené právami, takže ani jedno tam nemusí
+    // byť — preto reťaz fallbackov až po "prilep na konec".
+    var logTime = bar.querySelector('a.icon-time-add');
+    var edit = bar.querySelector('a.icon-edit');
+    if (logTime) {
+      bar.insertBefore(link, logTime);
+    } else if (edit) {
+      bar.insertBefore(link, edit.nextSibling);
+    } else {
+      bar.insertBefore(link, bar.firstChild);
+    }
+    link.dataset.raaPlaced = '1';
+  }
+
+  function init() {
     watchForCommentBox();
+    placeSummaryButton();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 
   /* POZOR: na stránke úlohy sú DVA editory Rich Editora — popisu a komentára —
@@ -183,6 +224,143 @@
         btn.disabled = false;
         toggleCancel(scope, false);
         if (scope._raaAbort === controller) { scope._raaAbort = null; }
+      });
+  });
+
+  /* ------------------------------------------------------------------ *
+   * AI Summarizer — overlay okno so zhrnutím úlohy.
+   *
+   * Zhrnutie sa iba zobrazuje; nikam sa nevkladá. Okno stavia JS (vzor
+   * #rcp-overlay z redmine_command_palette), všetky selektory sú prefixované
+   * `raa-`, aby nič neprebíjalo Redmine ani tému.
+   * ------------------------------------------------------------------ */
+  var ov = null;          // { overlay, box, title, body, close }
+  var ovAbort = null;     // AbortController rozbehnutej požiadavky
+  var ovOpener = null;    // tlačidlo, na ktoré sa má vrátiť fokus
+
+  function buildOverlay() {
+    if (ov) { return ov; }
+
+    var overlay = document.createElement('div');
+    overlay.id = 'raa-overlay';
+    overlay.style.display = 'none';
+
+    var box = document.createElement('div');
+    box.id = 'raa-box';
+    // Prístupnosť: command palette toto nemá, tu to robíme poriadne.
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-labelledby', 'raa-title');
+    box.tabIndex = -1;
+
+    var head = document.createElement('div');
+    head.id = 'raa-head';
+
+    var title = document.createElement('h3');
+    title.id = 'raa-title';
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.id = 'raa-close';
+    close.setAttribute('aria-label', CFG.i18n && CFG.i18n.close ? CFG.i18n.close : 'Close');
+    close.title = close.getAttribute('aria-label');
+    close.textContent = '×';
+
+    var body = document.createElement('div');
+    body.id = 'raa-body';
+
+    head.appendChild(title);
+    head.appendChild(close);
+    box.appendChild(head);
+    box.appendChild(body);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    close.addEventListener('click', closeOverlay);
+    // Klik mimo okna: kontrola na e.target === overlay, nie contains — inak by
+    // zatváralo aj tahanie kurzorom po texte vnútri.
+    overlay.addEventListener('mousedown', function (e) {
+      if (e.target === overlay) { closeOverlay(); }
+    });
+
+    ov = { overlay: overlay, box: box, title: title, body: body, close: close };
+    return ov;
+  }
+
+  function overlayOpen() {
+    return ov && ov.overlay.style.display !== 'none';
+  }
+
+  function setOverlayText(text, isError) {
+    var o = buildOverlay();
+    // textContent, NIKDY innerHTML: výstup modelu je nedôveryhodný vstup.
+    // Zalomenie a odrážky drží CSS (white-space: pre-wrap).
+    o.body.textContent = text || '';
+    o.body.classList.toggle('raa-error', !!isError);
+  }
+
+  function closeOverlay() {
+    if (!overlayOpen()) { return; }
+
+    // Zatvorenie počas generovania požiadavku zruší — missclick nemá na čo čakať.
+    if (ovAbort) {
+      ovAbort.abort();
+      ovAbort = null;
+    }
+    ov.overlay.style.display = 'none';
+    // Fokus späť na tlačidlo, z ktorého sa okno otvorilo.
+    if (ovOpener && document.contains(ovOpener)) { focusQuietly(ovOpener); }
+    ovOpener = null;
+  }
+
+  // Esc a focus trap. Listener je na document v capture fáze, aby predbehol
+  // Redmine handlery (rovnako to robí command palette).
+  document.addEventListener('keydown', function (e) {
+    if (!overlayOpen()) { return; }
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeOverlay();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      // V okne je jediný fokusovateľný prvok (×), takže fokus držíme na ňom.
+      e.preventDefault();
+      focusQuietly(ov.close);
+    }
+  }, true);
+
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest('a[data-raa="summary"]');
+    if (!link) { return; }
+    event.preventDefault();
+
+    var o = buildOverlay();
+    ovOpener = link;
+    o.title.textContent = (CFG.i18n && CFG.i18n.summaryTitle ? CFG.i18n.summaryTitle : '%{issue}')
+      .replace('%{issue}', link.getAttribute('data-issue-label') || '');
+    setOverlayText(link.getAttribute('data-working') || '', false);
+    o.overlay.style.display = 'flex';
+    focusQuietly(o.close);
+
+    if (ovAbort) { ovAbort.abort(); }
+    ovAbort = window.AbortController ? new window.AbortController() : null;
+    var controller = ovAbort;
+
+    post(CFG.summaryPath, { issue_id: link.getAttribute('data-issue-id') },
+         controller && controller.signal)
+      .then(function (data) {
+        if (controller !== ovAbort) { return; } // medzitým zavreté alebo prekliknuté
+        setOverlayText(data.text, false);
+      })
+      .catch(function (err) {
+        if (err && err.name === 'AbortError') { return; }
+        setOverlayText(err.message, true);
+      })
+      .finally(function () {
+        if (controller === ovAbort) { ovAbort = null; }
       });
   });
 })();

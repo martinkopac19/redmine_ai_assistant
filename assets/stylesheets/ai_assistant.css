@@ -104,3 +104,96 @@ button.ai-assistant-cancel[hidden] {
   color: #888;
   margin: 0.3em 0 0.8em 0;
 }
+
+/* ------------------------------------------------------------------ *
+ * AI Summarizer
+ *
+ * Tlačidlo v lište akcií je <a class="icon">, takže vzhľad (biele, rámik,
+ * radius, hover) dedí z témy Previo `.contextual a.icon` — tu neštýlujeme nič
+ * navyše. Kým ho JS nepresunie do lišty, je v bloku detailu; tam mu dáme
+ * aspoň odsadenie, aby nelepilo na atribúty.
+ * ------------------------------------------------------------------ */
+/* Platí len kým tlačidlo NIE JE v lište (JS mu po presune nastaví
+ * data-raa-placed="1", čím toto pravidlo prestane platiť a štýl preberá téma). */
+.ai-assistant-summary-link:not([data-raa-placed]) {
+  display: inline-block;
+  margin-top: 8px;
+}
+
+/* Overlay so zhrnutím. Všetko prefixované `raa-`, žiadny plošný selektor.
+ * z-index musí byť nad `.re-slash` Rich Editora (100001). */
+#raa-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100002;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  background: rgba(10, 10, 10, 0.45);
+}
+
+#raa-box {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8vh;
+  width: 720px;
+  max-width: 92vw;
+  max-height: 76vh;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(10, 10, 10, 0.35);
+  outline: none;
+}
+
+#raa-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--previo-grey200, #e5e5e5);
+}
+
+#raa-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--previo-grey600, #3d3d3d);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button#raa-close {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--previo-grey500, #515151);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+button#raa-close:hover {
+  background: var(--previo-grey100, #f0f0f0);
+  color: var(--previo-grey600, #3d3d3d);
+}
+
+#raa-body {
+  padding: 16px;
+  overflow-y: auto;
+  /* Model vracia obyčajný text s odrážkami — zalomenie musí zostať zachované. */
+  white-space: pre-wrap;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--previo-grey600, #3d3d3d);
+}
+
+#raa-body.raa-error {
+  color: var(--previo-negative, #a30000);
+  font-weight: 500;
+}
