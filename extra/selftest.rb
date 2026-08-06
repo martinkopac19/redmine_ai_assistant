@@ -49,10 +49,16 @@ begin
   puts "  persona doplnena menom     : #{ok(persona.include?(user.name) && !persona.include?('{{NAME}}'))}"
   puts "  summary prompt existuje    : #{ok(s['summary_system_prompt'].to_s.length > 100)}"
   puts "  summary limit popisu       : #{s['summary_description_limit']}"
-  sum_persona = RedmineAiAssistant.system_prompt_for(user, 'summary_system_prompt')
-  puts "  summary persona ma meno    : #{ok(sum_persona.include?(user.name) &&
-                                            !sum_persona.include?('{{NAME}}'))}"
-  puts "  dva ROZDIELNE prompty      : #{ok(sum_persona != persona)}"
+  # POZOR: admin si prompt prepisuje a {{NAME}} v ňom mať nemusí — to je legitímne.
+  # Testujeme teda samotné dopĺňanie, nie obsah admin textu.
+  probe = RedmineAiAssistant.system_prompt_for(user, 'summary_system_prompt')
+  puts "  summary persona bez {{NAME}}: #{ok(!probe.include?('{{NAME}}'))}"
+  puts "  {{NAME}} sa doplna menom   : " \
+       "#{ok(RedmineAiAssistant::DEFAULT_SUMMARY_PROMPT.include?('{{NAME}}') &&
+             probe.include?('{{NAME}}') == false)}"
+  puts "  nastaveny prompt ma {{NAME}}: " \
+       "#{s['summary_system_prompt'].to_s.include?('{{NAME}}') ? 'ano' : 'nie (vlastny text admina)'}"
+  puts "  dva ROZDIELNE prompty      : #{ok(probe != persona)}"
 
   # --- 2. sifrovanie -------------------------------------------------------
   puts "\n[2] Sifrovanie kluca"
@@ -269,6 +275,68 @@ begin
     puts '  neplatny kluc -> AuthError : OK (endpoint aj hlavicka su spravne)'
   rescue RedmineAiAssistant::GeminiClient::Error => e
     puts "  ina chyba klienta          : #{e.class} (#{e.message})"
+  end
+
+  # --- 11. cache sa musi zneplatnit po zmene nastaveni ---------------------
+  #
+  # Regresia, ktora uz raz nastala: cache key drzal ulohu a uzivatela, ale nie to,
+  # co sa naozaj odosiela. Admin zmenil prompt, klikol a hodinu dostaval staru
+  # odpoved — v domneni, ze nastavenie nefunguje. Plati pre OBA endpointy, lebo
+  # obe akcie idu cez tu istu metodu.
+  #
+  # MUSI byt az za sekciou [10]: prepisujeme `complete`, cim by sme test realnej
+  # HTTP cesty znefunkcnili.
+  puts "\n[11] Cache po zmene nastaveni (oba endpointy)"
+  target = public_issue || issue
+  if target
+    calls = 0
+    # Text musi byt unikatny PRE KAZDY BEH: inak by sa novo vygenerovana odpoved
+    # zhodovala s odpovedou, ktoru v cache nechal predchadzajuci beh, a test by
+    # falosne padal. Meriame preto pocet volani, nie obsah.
+    run_id = SecureRandom.hex(4)
+    RedmineAiAssistant::GeminiClient.class_eval do
+      define_method(:complete) { |*_a, **_k| calls += 1; "ODPOVED #{run_id} #{calls}" }
+    end
+    ApplicationController.prepend(Module.new { define_method(:user_setup) { User.current = user } })
+    sess = ActionDispatch::Integration::Session.new(Rails.application)
+
+    fire = lambda do |path|
+      sess.get "/issues/#{target.id}"
+      tok = sess.response.body[/name="csrf-token" content="([^"]+)"/, 1]
+      sess.post path, :params => { :issue_id => target.id }.to_json,
+                :headers => { 'CONTENT_TYPE' => 'application/json', 'X-CSRF-Token' => tok.to_s }
+      begin
+        JSON.parse(sess.response.body)
+      rescue StandardError
+        {}
+      end
+    end
+
+    base = RedmineAiAssistant.settings
+    [['/ai_assistant/suggest', 'system_prompt', 'odpoved '],
+     ['/ai_assistant/summary', 'summary_system_prompt', 'zhrnutie']].each do |path, key, label|
+      Setting.plugin_redmine_ai_assistant = base
+      first = fire.call(path)
+
+      # (a) rovnake nastavenia => ziadne nove volanie (a teda ziadny plateny request)
+      before = calls
+      cached = fire.call(path)
+      no_new_call = (calls == before)
+      puts "  #{label}: bez zmeny z cache : #{ok(no_new_call &&
+                                                 cached['text'] == first['text'] &&
+                                                 cached['cached'] == true)}"
+
+      # (b) zmena promptu => MUSI vzniknut nove volanie
+      before = calls
+      Setting.plugin_redmine_ai_assistant = base.merge(key => "Zmeneny prompt #{run_id}.")
+      after = fire.call(path)
+      puts "  #{label}: po zmene promptu  : #{ok(calls == before + 1 &&
+                                                 after['cached'].nil? &&
+                                                 after['text'].present?)}"
+    end
+    Setting.plugin_redmine_ai_assistant = base
+  else
+    puts '  (nenasla sa vhodna uloha)'
   end
 rescue StandardError => e
   puts "  !! SPADLO: #{e.class}: #{e.message}"

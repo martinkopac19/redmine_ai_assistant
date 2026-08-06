@@ -4,12 +4,14 @@
 
 Two findings from a review of 0.3.1, both about things that only bite later:
 
-- **Fix: editing a prompt appeared to do nothing.** The cache key held the issue and the
-  user but not what was actually being sent, so after changing the summary prompt (or the
-  model, or the description limit) the next click returned the hour-old summary — and the
-  change looked broken. The key now carries a digest of both prompts and the model, so
-  tuning a prompt takes effect on the very next click while genuinely unchanged requests
-  still cost nothing.
+- **Fix: editing a prompt appeared to do nothing — for both buttons.** The cache key held
+  the issue and the user but not what was actually being sent, so after changing a prompt
+  (or the model, or a description limit) the next click returned the hour-old answer and the
+  change looked broken. This hit the reply suggestion exactly as it hit the summary, since
+  both go through the same code path. The key now carries a digest of both prompts and the
+  model, so tuning takes effect on the very next click while genuinely unchanged requests
+  still cost nothing. Reverting to a previous prompt even re-uses its old cached answer,
+  because the digest is deterministic.
 - **Fix: a long summary could not be scrolled by keyboard.** The overlay body scrolls but a
   plain `<div>` cannot take focus, and the focus trap pinned Tab to the close button, so
   there was no way to reach the text without a mouse. The body is now focusable and part of
