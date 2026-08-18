@@ -180,3 +180,9 @@ Na skutočné čítanie MR by bolo treba volať GitLab API (token + nový klient
 Návrh sa cachuje per úloha + posledný komentár na hodinu, takže opakované kliknutie
 bez zmeny v úlohe nevygeneruje nové (platené) volanie. Volania platí Previo zo
 spoločného kľúča — preto je hodinový limit na užívateľa dôležitý.
+
+## Licencia
+
+Copyright (C) 2026 Martin Kopáč
+
+GPL-2.0-or-later, rovnako ako Redmine — viď [LICENSE](LICENSE).
