@@ -1,5 +1,227 @@
 # Changelog
 
+## 0.5.0 — 2026-08-20
+
+**New: plan mode.** A wand icon sits in the header to the left of the person icon and opens an
+**"AI issue creator"** window. You describe the work in your own words and your own
+language, and the AI proposes a *plan* — one issue, or a parent issue with subtasks. The
+plan can be refined in conversation, and only after **Accept** does anything reach a form.
+
+This is the second way into issue creation. The first one (the button on the new-issue
+form) assumes you already know which project the issue belongs to and that you have the
+form open. This one starts from "I have an idea, I am not sure where it goes, and it may
+be more than one issue".
+
+**The rule has not moved: the module only pre-fills. A human clicks "Create" for every
+single issue**, even when there are six of them. The plugin still writes nothing to Redmine.
+
+**Why issues are created one at a time, not in six tabs.** `issue[parent_issue_id]` has to
+point at an issue that already exists and is visible (core `issue.rb`), and that id only
+comes into being when a human saves the parent. The order is therefore forced by Redmine,
+not chosen by us. So after each save a panel appears above the form: "AI plan: 2 of 4
+created · Next: …", with a link to the next pre-filled form. The parent gets no
+`back_url` (its id is read from the address the core redirects to); subtasks get one, so
+you land back where you can see what already stands — and because the URL then carries both
+`back_url` and `parent_issue_id`, the core adds its own "Create and follow" button for free.
+
+The queue lives in `sessionStorage`, not on the server: an unfinished plan belongs to *that
+tab* and should die with it. It also expires after two hours, so the panel does not surface
+next to an unrelated issue you happen to open later. Reading it is deliberately paranoid —
+ids are pushed through `/^\d{1,9}$/` and URLs are always assembled by `prefillUrl`, never
+taken ready-made from storage, because storage is writable from the browser console and we
+build URLs and DOM text out of it.
+
+**One call returns the whole plan.** The enum lists (63 projects, 56 categories, PM
+candidates) sit in the schema once, inside `issues[].items`, so the number of subtasks does
+not change its size. N separate calls would pay for those lists N times over and the model
+would not see the plan as a whole.
+
+**The AI decides whether to split at all.** A single issue is a valid plan; the prompt says
+so explicitly, so filing an ordinary bug does not drag you through a wizard. Measured on
+the clone: a Slovak request spanning database, API, UI and tests came back as a parent plus
+four subtasks with the right categories, while a Polish one-line bug report came back as a
+single issue — and the plan summary is written in the language you used, because that part
+is for a human, not for Redmine.
+
+**Missing `:manage_subtasks` is handled in three places**, because Redmine drops
+`parent_issue_id` *silently* when the permission is absent: the prompt tells the model not
+to propose a hierarchy, `resolve_plan` forces `use_parent` to false regardless of what came
+back, and the window says why the issues are standalone. The panel additionally notices when
+the parent field is missing from the form, which also catches permissions changing midway.
+
+Along the way the modal shell was pulled out into one factory shared by both windows, and
+four things the Phase 1 window got wrong were fixed with it: the focus trap only cycled
+between two elements (it now collects focusable elements at Tab time, since the body gets
+re-rendered), closing did not check that the opener was still in the DOM, the rendered
+Markdown was scoped to `#raa-body` by id, and a third keydown listener would have closed two
+open dialogs at once.
+
+Two bugs were found by the new tests rather than by using it: the focus filter relied on
+`offsetParent`, which is always null in jsdom and unreliable in a browser (it now filters on
+the `hidden` attribute), and answering a clarifying question left the submit button disabled,
+because it only reacted to the composer — the exact mistake Phase 1 made with "Recalculate".
+
+### Security review before release (21 Aug 2026)
+
+The whole plugin was audited before 0.5.0 was committed — RuboCop (Lint + Security),
+ESLint, and a set of measurements against the running clone. Four findings were real and
+are fixed here; each was reproduced on the instance first, not inferred from reading code.
+
+**The hourly limit could be walked around.** With the limit set to 1 and already spent,
+a request came back `HTTP 429` — but two paid Gemini calls had already gone out. The check
+sat at the top of `with_ai_guard`, while picking the project and translating the search
+keywords happen *before* it, because their results are what the cache key is built from.
+Accounting therefore moved to `ask_model`, which every paid call now goes through: one call,
+one unit, checked before the request leaves. A cached answer still costs nothing, because
+the cache is read before any call is made.
+
+**A click on the wand cost three calls and was billed as one.** Measured, not estimated:
+project pick + keywords + plan. It now subtracts three, so the hourly limit reflects what
+is actually spent. At the default of 30 that means roughly ten plans per person per hour;
+raise it in the plugin settings if that turns out tight.
+
+**CSRF was not enforced on `.json` routes.** `POST /ai_assistant/plan_issues.json` with a
+form-encoded body and no token went through and triggered three paid calls. Redmine skips
+token verification for `api_request?`, and that is decided purely by the extension in the
+address (core `application_controller.rb:43`). None of these actions is a REST API — our own
+JS calls them from the browser and always sends the token — so the controller now declares
+that no request of its own is an API request. Cross-site exploitation was already blocked by
+the `SameSite=Lax` session cookie; this is the layer that does not depend on that setting.
+
+**The wizard queue mistook a detour for a created issue.** It knew "the issue exists now"
+only from standing at `/issues/<id>`. So if you accepted a plan and then, instead of clicking
+Create, followed a link to any existing issue, that issue was counted as created — and its
+number became the parent, quietly attaching the subtasks to something unrelated (measured on
+`#49286`). Arming now happens on the form's `submit` event, so it is the click on Create that
+counts, not an address. If validation sends the form back, the flag is cleared again, which
+is why an abandoned attempt cannot be credited to a later, unrelated click.
+
+**Plan mode no longer depends on the draft switch.** It asked through
+`available_for_draft?`, which requires `draft_enabled` — so the two switches could only be
+turned on together, defeating the point of having separate ones.
+
+Not changed, by decision: the project picked by the AI is still not re-checked against
+`:add_issues`, and `pick_project` still caches the project object rather than its id. Under
+changed permissions or an archived project this can, within the cache hour, build a plan for
+a project the user may no longer post to. Judged an edge case and left alone.
+
+Two things the audit confirmed rather than changed, both worth keeping in mind when this code
+is touched: **the security boundary is the whitelist, not the prompt** — `IssueDraft.options`
+is both the offer to the model and the validation of its answer, so no injected instruction
+can widen it — and **nothing is ever rendered through `innerHTML`**. Free-text fields
+(`subject`, `description`, `plan_summary`) are the one place injected text can reach, and a
+human reads them in the window before anything is saved.
+
+## 0.4.1 — 2026-08-19
+
+**Duplicate search now works in every language.** Issue subjects in Previo are written
+in English, but people write their note in their own language — colleagues are in Romania,
+Poland and Hungary, and the whole point is that everyone writes their own way and still
+gets the full benefit. Duplicate search is a plain `LIKE` over subjects, so that did not
+work: the Czech note "nejde ulozit rezervaci kdyz ma host prilis dlouhe jmeno" found 5
+issues in Reservations and **not one of them was related** — the only thing that matched
+was "host" inside "hostel". The same note in English hit the cap of 40 candidates with
+relevant matches at the top.
+
+So a small extra call now turns the note into English keywords before the search runs.
+It has to come first, not last: the duplicate candidates belong in the prompt of the main
+call, so they cannot be derived from its answer. The prompt asks for hotel-system
+terminology (reservation, invoice, voucher, rate, occupancy) rather than a word-for-word
+translation, and the answer is cleaned — the model occasionally returns a whole phrase
+instead of single words, and words shorter than four characters only add noise to a
+`LIKE` search.
+
+**A failed translation never breaks the draft.** If the extra call fails, the search falls
+back to the words in the original note and the draft is produced as before. Failing on a
+helper step that only exists to improve the main feature would be a bad trade.
+
+One click can now mean up to three paid calls (keywords, draft, and a second draft if the
+AI changes the project), but still counts as **one** against the hourly limit. The
+translation is cached separately from the draft, so clicking again on the same note does
+not pay for it twice. The whole thing has its own switch
+(`draft_translate_keywords`, on by default).
+
+## 0.4.0 — 2026-08-19
+
+**New: "Create with AI" on the new issue form.** From a short note in any language the AI
+proposes the project, subject, description, tracker, category, priority and the required
+custom fields, and warns about issues that may be duplicates.
+
+While the AI works, a "Drafting the issue…" status and a cancel × sit next to the button,
+exactly as they do for the reply suggestion. What happens next depends on the AI: if it has
+no questions the form is **pre-filled straight away**; if it needs something, an
+**"AI issue creator" window** opens with the proposal and an answer field per question. It replaces a Gemini Gem in Google
+Chat whose prompt carried a hand-maintained JSON list of projects, categories and project
+managers, plus hard-coded description templates. Everything is now read live from Redmine,
+so there is nothing left to maintain: this clone has 63 active projects and 464 categories
+against the Gem's four projects. The description templates already exist as data in
+`global_issue_templates`, keyed by tracker, so they are read from there too — edit the
+template in Redmine and the AI follows.
+
+**The form is only pre-filled. "Create" is always clicked by a human**, and saving is still
+done exclusively by the core `IssuesController#create`, so every permission and validation
+stays where it was. The plugin continues to write nothing to Redmine.
+
+Two things the first version got wrong, both found by using it:
+
+- **The AI could not change the project.** Asked to file a CRM task from the Channel Manager
+  form, it had only that project's data to work with, so it kept the task there and invented
+  a nonsense "Where?" line to make it fit. It now chooses from every project the user may add
+  issues to. Categories, PMs and templates of *other* projects are deliberately not in the
+  prompt — that would be 464 categories at once — so when the project changes the model is
+  called a second time with the right project's context, which is what finally produced
+  "Billing / BILLING - COMMISSIONS" instead of the invented line. Pre-filling then navigates
+  to that project's form via URL parameters rather than rewriting the open one, because
+  changing the project re-renders trackers, categories and custom fields anyway.
+- **The clarifying questions were a dead end** — displayed, with nowhere to answer them. Each
+  question now gets its own answer field in the window, and "Recalculate with answers" sends
+  the whole conversation back. The server stays stateless; the client holds the history.
+  Answering "R+ = 4410, M+ = 4420, from 1 September 2026" put exactly that into the
+  "How To Do?" section and the question disappeared.
+- **The window opened on every click, even with nothing to ask** — an extra step for no
+  reason, and "Recalculate with answers" showed up next to an empty question list. It now
+  opens only when there are questions; otherwise the form is filled directly. The stray
+  button was a CSS trap worth remembering: `button.ai-assistant-btn` sets `display: inline-flex`,
+  which outranks the browser's `[hidden] { display: none }`, so setting `hidden` from JS did
+  nothing at all. Anything we hide by attribute now has an explicit `[hidden]` rule.
+
+Notes on how it is built, because each point cost a debugging round:
+
+- **The model returns names, not ids, and the server resolves them.** `options` is one method
+  used for both the prompt and the validation, so the offered list and the accepted list
+  cannot drift apart. Anything that does not resolve is dropped — an empty field beats a
+  wrong one.
+- **The response schema is built dynamically, with an `enum` per field.** With plain string
+  fields the reasoning model wrote its train of thought into `tracker`
+  ("Bug McBugface? No, Bug tracker from list…"), which then matched nothing. An `enum` leaves
+  it nowhere to wander. Gemini rejects an empty string in an `enum`, so `__UNKNOWN__` is the
+  sentinel for "not sure"; no Redmine record is named that, so it resolves to nothing by itself.
+- **Optional keys are simply omitted by Gemini**, so the fields that matter are listed in
+  `required` — in the first test neither the category, the priority nor the PM came back.
+- **A truncated JSON now reports "raise the token limit", not "unexpected format".** For a
+  reasoning model the thinking counts against `maxOutputTokens`, so 4096 returned an object
+  cut in half; the default for this feature is 16384.
+- **Duplicate candidates cannot use the core `Issue.like` scope**, which joins words with AND
+  and would require the whole sentence to appear in a subject. Ours ORs the words and ranks by
+  how many matched, then the model re-ranks and flags only what it believes. Known limit:
+  matching is keyword-based, so a note written in Czech against English-language issues finds
+  less than an English one would.
+- **Required `bool` custom fields are not offered to the model.** Previo requires "DEV ready",
+  which is a workflow flag rather than something contained in a bug report.
+- **The assignee is not proposed by the model at all.** When the chosen category has an
+  `assigned_to` in Redmine it is filled in from there — deterministic, and free.
+- **The button sits next to the "New issue" heading**, rendered from
+  `view_issues_new_top` and moved into the `<h2>` by JS. The first attempt used
+  `view_issues_form_details_bottom`, which put it adrift in the middle of the field list;
+  worse, anything rendered inside the form is re-created whenever changing the tracker or
+  the category makes Redmine re-render `#all_attributes` from the server, so a moved copy
+  would have come back as a duplicate. `view_issues_new_top` is outside the form and fires
+  only on the new issue page, which removes both problems. The warnings panel is built by
+  JS below the same heading, for the same reason.
+- **The project is read from `#issue_project_id`, not from the button**, so changing the
+  project in the form (or picking one on the global `/issues/new`) doesn't hand the AI the
+  categories, PM and templates of the previous project.
+
 ## 0.3.2 — 2026-08-06
 
 Two findings from a review of 0.3.1, both about things that only bite later:

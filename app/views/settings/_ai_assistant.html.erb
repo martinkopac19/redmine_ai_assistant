@@ -119,4 +119,78 @@
       <em class="info"><%= l(:'ai_assistant.setting_summary_system_prompt_info') %></em>
     </p>
   </fieldset>
+
+  <fieldset>
+    <legend><%= l(:'ai_assistant.legend_draft') %></legend>
+
+    <p class="ai-assistant-hint"><%= l(:'ai_assistant.draft_note') %></p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_draft_enabled') %></label>
+      <%= hidden_field_tag 'settings[draft_enabled]', '0' %>
+      <%= check_box_tag 'settings[draft_enabled]', '1', settings['draft_enabled'].to_s == '1' %>
+      <em class="info"><%= l(:'ai_assistant.setting_draft_enabled_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_draft_similar_limit') %></label>
+      <%= text_field_tag 'settings[draft_similar_limit]',
+            settings['draft_similar_limit'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_draft_similar_limit_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_draft_translate_keywords') %></label>
+      <%= hidden_field_tag 'settings[draft_translate_keywords]', '0' %>
+      <%= check_box_tag 'settings[draft_translate_keywords]', '1',
+            settings['draft_translate_keywords'].to_s == '1' %>
+      <em class="info"><%= l(:'ai_assistant.setting_draft_translate_keywords_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_draft_max_tokens') %></label>
+      <%= text_field_tag 'settings[draft_max_tokens]',
+            settings['draft_max_tokens'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_draft_max_tokens_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_draft_system_prompt') %></label>
+      <%= text_area_tag 'settings[draft_system_prompt]', settings['draft_system_prompt'],
+            :rows => 18, :style => 'width:44em;' %>
+      <em class="info"><%= l(:'ai_assistant.setting_draft_system_prompt_info') %></em>
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend><%= l(:'ai_assistant.legend_plan') %></legend>
+
+    <p class="ai-assistant-hint"><%= l(:'ai_assistant.plan_note') %></p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_plan_enabled') %></label>
+      <%= hidden_field_tag 'settings[plan_enabled]', '0' %>
+      <%= check_box_tag 'settings[plan_enabled]', '1', settings['plan_enabled'].to_s == '1' %>
+      <em class="info"><%= l(:'ai_assistant.setting_plan_enabled_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_plan_max_items') %></label>
+      <%= text_field_tag 'settings[plan_max_items]', settings['plan_max_items'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_plan_max_items_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_plan_max_tokens') %></label>
+      <%= text_field_tag 'settings[plan_max_tokens]', settings['plan_max_tokens'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_plan_max_tokens_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_plan_system_prompt') %></label>
+      <%= text_area_tag 'settings[plan_system_prompt]', settings['plan_system_prompt'],
+            :rows => 18, :style => 'width:44em;' %>
+      <em class="info"><%= l(:'ai_assistant.setting_plan_system_prompt_info') %></em>
+    </p>
+  </fieldset>
 </div>

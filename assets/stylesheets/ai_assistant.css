@@ -202,46 +202,462 @@ button#raa-close:hover {
   font-weight: 500;
 }
 
-/* Vyrenderovaný Markdown zhrnutia. Selektory sú scopované do #raa-body, takže
- * neprebíjajú Redmine ani tému. */
+/* Vyrenderovaný Markdown. Scopované na triedu `.raa-rich`, nie na `#raa-body`:
+ * ten istý renderer plní aj ďalšie okná (súhrn plánu), a s id-selektorom by tam
+ * text zostal neformátovaný. Trieda je stále dosť úzka, aby nepresakovala do
+ * Redmine ani do témy — pridáva ju len `setOverlayText`. */
 #raa-body.raa-rich {
   white-space: normal;
 }
 
-#raa-body .raa-h {
+.raa-rich .raa-h {
   margin: 18px 0 6px;
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--previo-grey700, #1f1f1f);
 }
 
-#raa-body .raa-h:first-child {
+.raa-rich .raa-h:first-child {
   margin-top: 0;
 }
 
-#raa-body .raa-p {
+.raa-rich .raa-p {
   margin: 0 0 8px;
 }
 
-#raa-body .raa-list {
+.raa-rich .raa-list {
   margin: 0 0 8px;
   padding-inline-start: 20px;
   list-style: disc;
 }
 
-#raa-body .raa-list li {
+.raa-rich .raa-list li {
   margin: 0 0 3px;
 }
 
-#raa-body strong {
+.raa-rich strong {
   font-weight: 600;
   color: var(--previo-grey700, #1f1f1f);
 }
 
-#raa-body code {
+.raa-rich code {
   padding: 1px 4px;
   background: var(--previo-grey100, #f0f0f0);
   border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.86em;
 }
+
+/* --------------------------------------------------------------------------
+   Create with AI — panel s upozorneniami pod formulárom novej úlohy.
+   Vytvára ho JS mimo #all_attributes, aby ho neodstránilo prekreslenie
+   formulára po zmene trackera či kategórie.
+   -------------------------------------------------------------------------- */
+.ai-assistant-draft-notes {
+  margin: 6px 0 14px;
+  padding: 10px 12px;
+  background: var(--previo-grey50, #fafafa);
+  border: 1px solid var(--previo-grey200, #e5e5e5);
+  border-radius: var(--previo-radius, 8px);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ai-assistant-draft-notes .ai-assistant-draft-heading {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--previo-grey600, #202124);
+}
+
+/* Druhý a ďalší nadpis (otázky za duplicitami) potrebuje odsadenie zvrchu. */
+.ai-assistant-draft-notes ul + .ai-assistant-draft-heading {
+  margin-top: 10px;
+}
+
+.ai-assistant-draft-notes ul {
+  margin: 0;
+  padding-inline-start: 18px;
+}
+
+/* Tlačidlo je presunuté DO nadpisu „New issue", takže musí zhodiť jeho veľkosť
+   aj váhu — inak by sa z neho stal druhý nadpis.
+
+   Vycentrovanie robí flex na samotnom nadpise, nie `vertical-align`: to zarovnáva
+   podľa účtovnej strednej výšky riadku, takže tlačidlo pri nadpise s inou veľkosťou
+   písma sedelo mimo. `:has()` obmedzuje pravidlo na nadpis, v ktorom tlačidlo
+   naozaj je — nadpisy ostatných stránok zostávajú nedotknuté. */
+#content > h2:has(.ai-assistant-draft) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+#content > h2 .ai-assistant-draft {
+  margin-inline-start: 14px;
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Okno „AI issue creator" (Create with AI).
+   Z-index nad ostatnými: paleta 100000, .re-slash 100001, #raa-overlay 100002.
+   -------------------------------------------------------------------------- */
+#raa-dm-overlay,
+#raa-pl-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100003;
+  display: flex;
+  justify-content: center;
+  background: rgba(10, 10, 10, 0.45);
+}
+
+#raa-dm-overlay[hidden],
+#raa-pl-overlay[hidden] { display: none; }
+
+#raa-dm-box,
+#raa-pl-box {
+  display: flex;
+  flex-direction: column;
+  width: 760px;
+  max-width: 92vw;
+  max-height: 82vh;
+  margin-top: 7vh;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+}
+
+#raa-dm-head,
+#raa-pl-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--previo-grey200, #e5e5e5);
+}
+
+#raa-dm-head h3,
+#raa-pl-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+#raa-dm-close,
+#raa-pl-close {
+  background: none;
+  border: 0;
+  padding: 0 4px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--previo-grey500, #515151);
+}
+
+#raa-dm-body,
+#raa-pl-body {
+  overflow-y: auto;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Telo je hlavný obsah okna, takže rastie ono — composer a päta majú pevnú
+   výšku. Bez `flex: 1` si telo vzalo len výšku obsahu a pri dlhom pláne zostalo
+   nízke, kým vstupné pole zaberalo polovicu okna. `min-height: 0` je nutné,
+   inak flexbox položku nezmenší pod jej obsah a scroll sa nezapne. */
+#raa-pl-box {
+  height: 82vh;
+}
+
+#raa-pl-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#raa-pl-composer,
+#raa-pl-foot {
+  flex: 0 0 auto;
+}
+
+#raa-dm-foot,
+#raa-pl-foot {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border-top: 1px solid var(--previo-grey200, #e5e5e5);
+}
+
+/* Primárne tlačidlo („Predvyplniť formulár") nesie farbu témy. */
+#raa-dm-foot .raa-dm-primary,
+#raa-pl-foot .raa-dm-primary {
+  background: var(--previo-primary, #b50000) !important;
+  border-color: var(--previo-primary, #b50000);
+  color: #fff;
+}
+
+#raa-dm-foot .raa-dm-primary:disabled,
+#raa-pl-foot .raa-dm-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.raa-dm-status { color: var(--previo-grey500, #515151); }
+.raa-dm-error { color: var(--previo-negative, #a30000); }
+
+/* Zmena projektu je najvýraznejší zásah, aký AI navrhne — musí byť vidieť. */
+.raa-dm-notice {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: var(--previo-primary-transparent, #f9ebeb);
+  border-radius: var(--previo-radius-sm, 4px);
+  font-weight: 600;
+}
+
+.raa-dm-summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+}
+
+.raa-dm-summary dt {
+  font-weight: 600;
+  color: var(--previo-grey500, #515151);
+}
+
+.raa-dm-summary dd { margin: 0; }
+
+.raa-dm-description {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  max-height: 30vh;
+  overflow-y: auto;
+  background: var(--previo-grey50, #fafafa);
+  border: 1px solid var(--previo-grey200, #e5e5e5);
+  border-radius: var(--previo-radius-sm, 4px);
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.raa-dm-question { margin: 0 0 10px; }
+
+.raa-dm-question label {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.raa-dm-question .raa-dm-answer {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* POZOR: `button.ai-assistant-btn` nastavuje `display: inline-flex`, čím prebije
+   prehliadačové `[hidden] { display: none }` — atribút `hidden` potom v JS nič
+   nerobí. Stalo sa presne to: „Prepočítať s odpoveďami" svietilo aj vtedy, keď
+   žiadne otázky neboli. Rovnaká pasca platí pre každý prvok, ktorému dávame
+   `display` a zároveň ho skrývame atribútom. */
+button.ai-assistant-btn[hidden] { display: none; }
+.ai-assistant-draft-notes[hidden] { display: none; }
+
+/* ==========================================================================
+   Prútik v hlavičke („AI issue creator") — vedľa ikonky osoby.
+   Text popisku sa skrýva `font-size: 0` a ikonka ide z `::before`. Je to ten
+   istý postup, aký téma previo používa pre #loggedas a .notification-filter,
+   a je zvolený zámerne: caption menu položky Redmine escapuje (`h(caption)`
+   v menu_manager.rb), takže inline SVG sa do nej vložiť nedá. Text v DOM
+   zostáva pre čítačky obrazovky.
+
+   Toto CSS sa načítava PO téme (hook `view_layouts_base_html_head` je za
+   `heads_for_theme`), takže netreba zvyšovať špecifickosť.
+   ========================================================================== */
+#top-menu a.raa-plan-link {
+  font-size: 0;
+  display: inline-flex;
+  align-items: center;
+}
+#top-menu a.raa-plan-link::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  background: no-repeat center / 17px 17px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 4V2M15 10V8M11.5 6h-2M20.5 6h-2M17.1 3.9l1.4-1.4M17.1 8.1l1.4 1.4M12.9 3.9 11.5 2.5M4 20l9-9'/%3E%3C/svg%3E");
+}
+/* Zvonček ani ikonka osoby v téme podčiarknutie nemajú, tak ho nemá ani prútik. */
+#top-menu a.raa-plan-link:hover { text-decoration: none; opacity: 0.75; }
+
+/* Po presune priamo do #top-menu (viď `placePlanLink` v JS) preberá prútik od
+   `#loggedas` úlohu prvku, ktorý odtláča účet vpravo — inak by po pôvodnom
+   `margin-left: auto` zostala medzi prútikom a menom diera na celú šírku.
+   Rovnaký `order` ako má `#loggedas` znamená, že rozhoduje poradie v DOM,
+   a tam je prútik pred ním. */
+#top-menu > a.raa-plan-link {
+  order: 2;
+  margin-inline-start: auto;
+}
+#top-menu:has(> a.raa-plan-link) #loggedas { margin-left: 0; }
+
+/* --------------------------------------------------------------------------
+   Režim plánu — čo je NAD spoločným shellom draft modalu (ten sa zdieľa
+   rozšírením selektorov vyššie). Vlastné je len to, čo toto okno má a druhé
+   nie: vstupné pole so zoznamom projektov a karty úloh.
+   -------------------------------------------------------------------------- */
+#raa-pl-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--previo-grey200, #e5e5e5);
+}
+
+#raa-pl-composer[hidden] { display: none; }
+
+#raa-pl-input-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--previo-grey700, #1f1f1f);
+}
+
+#raa-pl-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+#raa-pl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--previo-grey500, #515151);
+}
+
+#raa-pl-row select { max-width: 22em; }
+
+#raa-pl-lock-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+/* Cancel má zostať vľavo, primárne akcie vpravo. */
+#raa-pl-foot { justify-content: flex-start; }
+#raa-pl-foot #raa-pl-submit,
+#raa-pl-foot #raa-pl-accept { margin-inline-start: auto; }
+#raa-pl-foot #raa-pl-accept[hidden],
+#raa-pl-foot #raa-pl-submit[hidden] { display: none; }
+
+/* Transkript konverzácie. Odlíšenie strán je odsadením a farbou pozadia, nie
+   ikonami — v okne je hlavný obsah plán, nie chat. */
+.raa-pl-turn {
+  margin: 0 0 6px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.raa-pl-user {
+  background: var(--previo-grey100, #f0f0f0);
+  color: var(--previo-grey700, #1f1f1f);
+}
+
+.raa-pl-ai {
+  margin-inline-start: 22px;
+  color: var(--previo-grey500, #515151);
+}
+
+#raa-pl-log:empty { display: none; }
+
+.raa-pl-summary { margin: 0 0 12px; }
+
+/* Karta úlohy. Podúlohy sú odsadené, aby bola hierarchia vidieť na prvý
+   pohľad a nemusela sa čítať z popiskov. */
+.raa-pl-card {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--previo-grey200, #e5e5e5);
+  border-radius: 8px;
+}
+
+.raa-pl-card[data-role="subtask"] {
+  margin-inline-start: 24px;
+  border-inline-start: 3px solid var(--previo-grey200, #e5e5e5);
+}
+
+.raa-pl-card[hidden] { display: none; }
+
+.raa-pl-badge {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--previo-grey500, #515151);
+}
+
+.raa-pl-card[data-role="parent"] .raa-pl-badge { color: var(--previo-primary, #b50000); }
+
+.raa-pl-subject {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.raa-pl-answer { width: 100%; box-sizing: border-box; }
+
+/* --------------------------------------------------------------------------
+   Sprievodca zakladaním — panel nad formulárom aj na detaile úlohy.
+   Vkladá sa POD nadpis stránky, teda mimo `#all_attributes`, ktoré Redmine
+   pri zmene trackera/kategórie/nadradenej úlohy prekresľuje zo servera.
+   -------------------------------------------------------------------------- */
+.raa-plan-queue .raa-plan-queue-line {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.raa-plan-queue .raa-plan-queue-next {
+  margin: 0 0 8px;
+  color: var(--previo-grey500, #515151);
+}
+
+.raa-plan-queue .raa-plan-queue-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+/* Od prvého návrhu ďalej je hlavný obsah okna plán, nie písanie — vstupné pole
+   sa zmenší na jeden riadok a nadpis nad ním zmizne (v tej fáze je už zrejmé,
+   načo pole slúži, a zaberal by miesto plánu). */
+#raa-pl-composer.raa-pl-compact { padding: 8px 16px; }
+
+#raa-pl-composer.raa-pl-compact #raa-pl-input-label { display: none; }
+
+#raa-pl-composer.raa-pl-compact #raa-pl-input {
+  min-height: 34px;
+  max-height: 25vh;
+}
+
+#raa-pl-project-reason {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--previo-grey500, #515151);
+}
+
+#raa-pl-project-reason[hidden],
+#raa-pl-row[hidden] { display: none; }

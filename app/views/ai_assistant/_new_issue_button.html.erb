@@ -1,0 +1,47 @@
+<%
+  # Renderuje sa v hooku view_issues_new_top, teda hneď za nadpisom „New issue“
+  # a MIMO formulára — JS ho odtiaľ presunie k nadpisu. Mimo formulára je to
+  # zámerne: prekreslenie #all_attributes po zmene trackera by ho inak vyrobilo
+  # znova a boli by dve.
+  #
+  # `new_record?` tu už netreba (hook beží len na stránke novej úlohy), ale
+  # ponechané je zámerne ako lacná poistka, keby sa hook niekedy volal aj inde.
+  issue   = defined?(issue) ? issue : nil
+  project = (defined?(project) && project) || issue&.project
+%>
+
+<% if issue&.new_record? && RedmineAiAssistant.available_for_draft?(project) %>
+  <span class="ai-assistant-actions ai-assistant-draft" data-project-id="<%= project.id %>">
+    <%# Začína zakázané a JS ho povolí, až keď je vyplnený názov alebo popis —
+        bez zadania nemá AI z čoho vychádzať. %>
+    <button type="button" class="ai-assistant-btn" data-raa="draft" disabled
+            data-working="<%= l(:'ai_assistant.draft_working') %>">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true">
+        <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+        <path d="M18 16.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
+      </svg>
+      <%= l(:'ai_assistant.button_draft') %>
+    </button>
+    <%# Priebeh je INLINE pri tlačidle, rovnako ako pri návrhu odpovede: kým AI
+        pracuje, je vidieť „Pripravujem…" a krížik na zrušenie. Okno sa otvorí až
+        vtedy, keď sa AI potrebuje dopýtať; inak sa formulár predvyplní priamo. %>
+    <span class="ai-assistant-progress">
+      <span class="ai-assistant-status" role="status" aria-live="polite"></span>
+      <button type="button" class="ai-assistant-cancel" data-raa="cancel" hidden
+              title="<%= l(:'ai_assistant.cancel') %>"
+              aria-label="<%= l(:'ai_assistant.cancel') %>">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+             stroke-width="3" stroke-linecap="round" aria-hidden="true">
+          <path d="M5 5l14 14M19 5L5 19" />
+        </svg>
+      </button>
+    </span>
+  </span>
+<% end %>
+
+<%# Panel s upozorneniami (možné duplicity, doplňujúce otázky) tu ZÁMERNE nie je
+    a vytvára ho JS mimo #all_attributes. Dôvod: zmena trackera alebo kategórie
+    prekreslí #all_attributes zo servera, čím by panel zmizol práve vtedy, keď ho
+    predvyplnenie AI vyrobilo. %>

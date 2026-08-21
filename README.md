@@ -15,12 +15,38 @@ zhrnutím **popisu a všetkých verejných komentárov** — zhrnutie sa iba zob
 nikam sa nevkladá. Okno sa zatvára krížikom, klávesom Esc alebo klikom mimo;
 zatvorenie počas generovania požiadavku zruší.
 
+**3. Create with AI.** Na formulári novej úlohy je **vedľa nadpisu „New issue"**
+tlačidlo **Create with AI**, ktoré sa aktivuje, keď je vyplnený názov alebo popis.
+Zo stručného zadania (česky, slovensky, anglicky) určí **projekt**, **názov a popis
+v angličtine podľa šablóny daného trackera**, tracker, kategóriu, prioritu a **povinné polia**
+(v Previu „Project Manager"). Ak zvolená kategória má v Redmine nastavenú zodpovednú osobu,
+doplní sa aj riešiteľ. Upozorní aj na **možné duplicity** s odkazmi.
+
+Priebeh je vidieť **pri tlačidle** („Pripravujem návrh úlohy…" + krížik na zrušenie), rovnako
+ako pri návrhu odpovede. Čo sa stane potom, závisí od AI:
+
+- **nemá otázky** → formulár sa predvyplní hneď, žiadne okno sa neotvára;
+- **potrebuje sa dopýtať** → otvorí sa okno **„AI issue creator"** s návrhom a **každá otázka
+  má vlastné políčko na odpoveď**. Po *Prepočítať s odpoveďami* ide celá konverzácia modelu
+  znova, takže sa dá dopytovať, kým návrh nesedí.
+
+**Projekt smie zmeniť** — zadanie často nepatrí do projektu, v ktorom užívateľ stojí.
+Vtedy to okno výslovne oznámi a predvyplnenie prejde na formulár správneho projektu.
+
+Formulár sa iba **predvyplní** — tlačidlo *Create* vždy klikne človek.
+
+Nahrádza to Gemini Gem v Google Chate, ktorý mal v prompte ručne udržiavaný JSON
+zoznam projektov, kategórií a projektových manažérov a zadrôtované šablóny.
+Tu sa všetko číta **naživo z Redmine** (šablóny z `global_issue_templates` podľa
+trackera), takže sa neudržiava nič a pridanie kategórie sa prejaví samo.
+Funkcia má **vlastný vypínač**, aby sa dala nasadiť oddelene od prvých dvoch.
+
 Komentár vždy odosiela užívateľ sám, pod svojím účtom. Plugin do Redmine nikdy
-nič nezapíše.
+nič nezapíše — úlohu ukladá jadrový `IssuesController#create`.
 
 Každá funkcia má v konfigurácii **vlastný systémový prompt** a **vlastný limit
 znakov popisu** (odpoveď 600, zhrnutie 4000 — pri zhrnutí nesie zadanie práve
-popis). Hodinový limit volaní je naopak **jeden pre obe**, lebo sa platí z toho
+popis). Hodinový limit volaní je naopak **jeden pre všetky**, lebo sa platí z toho
 istého firemného kľúča.
 
 ### Umiestnenie tlačidiel (a prečo to rieši JS)
@@ -49,6 +75,38 @@ tlačidlo zostane na mieste — na spodné Odoslať sa neposúva, tam nemá zmys
 Vizuál kopíruje sekundárne tlačidlá témy Previo (Edit / Log time / Watch / Copy):
 biele, rámik `--previo-grey200`, radius 8, hover inset tieň. Veľkosť je rovnaká
 ako „Add comment" (min-height 34 px, padding 0 20 px), aby sedeli v jednej línii.
+
+**4. AI issue creator (režim plánu).** V hlavičke, **vedľa ikonky osoby**, je ikonka
+čarovného prútika. Otvorí okno, kde úlohu opíšeš vlastnými slovami a vo svojom
+jazyku — projekt vyberať nemusíš. AI navrhne **plán**: buď jednu úlohu, alebo
+nadradenú úlohu s podúlohami. Plán sa dá doupresniť v konverzácii (doplniť text
+alebo odpovedať na otázky) a až **Accept** začne zakladanie.
+
+Úlohy sa predvypĺňajú **jedna po druhej** a „Create" pri každej klikne človek. Po
+každom uložení sa nad formulárom (a na detaile úlohy) zobrazí panel *„AI plán:
+2 zo 4 založené · Ďalšia: …"* s odkazom na ďalší predvyplnený formulár. Odkaz
+znesie aj Ctrl+klik, keď chceš ďalšiu úlohu v novom panelu.
+
+> **Prečo nie všetky formuláre naraz.** `issue[parent_issue_id]` musí v Redmine
+> ukazovať na **existujúcu** úlohu, a jej číslo vznikne až tým, že ju človek uloží.
+> Poradie je teda vynútené jadrom, nie naším rozhodnutím: najprv nadradená úloha,
+> potom podúlohy.
+
+Fronta úloh žije v `sessionStorage` — nedokončený plán patrí **tej karte** a zomrie
+s ňou (plus expiruje po dvoch hodinách). Na server sa neukladá nič.
+
+Keď v projekte nemáš právo **spravovať podúlohy** (`manage_subtasks`), AI navrhne
+samostatné úlohy a okno to povie — Redmine by inak `parent_issue_id` **ticho**
+zahodilo a hierarchia by nevznikla bez akéhokoľvek varovania.
+
+Má vlastný vypínač (*Zapnúť režim plánu*); kým je vypnutý, ikonka prútika sa
+v hlavičke nezobrazí.
+
+### Nemenné pravidlo
+
+**Modul vždy len predvyplňuje. Finálne „Create" klikne pri každej úlohe človek.**
+Ukladá výhradne jadrový `IssuesController#create`, takže všetky práva a validácie
+zostávajú na jadre a plugin do Redmine nezapisuje nič.
 
 ## Inštalácia
 
@@ -122,6 +180,26 @@ pluginu na konci vráti do pôvodného stavu; do Redmine nič nezapíše.
 ako `redmine`. Bez toho vzniknú v `tmp/cache` súbory vlastnené rootom, ktoré appka
 nedokáže prepísať. Ak sa to už stalo:
 `docker compose exec --user root redmine chown -R redmine:redmine /usr/src/redmine/tmp`
+
+### Klientske testy
+
+Klientskú časť (okná, XSS, focus trap, fronta) overujú dva jsdom testy, ktoré
+spúšťajú **skutočný** `ai_assistant.js` so stubnutým `fetch` — nič nikam nechodí
+a nestojí to žiadne volanie do Gemini:
+
+```sh
+NODE_PATH=C:/Users/marti/theprevio/node_modules node extra/overlay_test.js   # AI Summarizer
+NODE_PATH=C:/Users/marti/theprevio/node_modules node extra/plan_test.js      # režim plánu
+```
+
+`plan_test.js` má dve fixtures: okno (plán, karty, konverzácia, XSS, focus trap,
+chýbajúce právo na podúlohy) a sprievodcu zakladaním (panel mimo `#all_attributes`,
+`parent_issue_id` aj `back_url` v odkaze, preskočenie, zrušenie, expirácia
+a **hostilná fronta podstrčená z konzoly**).
+
+> `location.assign` sa v jsdom stubnúť nedá (je unforgeable), takže navigácia sama
+> sa netestuje. Overuje sa to, čo pozorovateľné je: stav fronty v `sessionStorage`
+> a `href` odkazu „Predvyplniť ďalšiu úlohu".
 
 ## GDPR
 
