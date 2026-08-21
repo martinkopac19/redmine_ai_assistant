@@ -76,8 +76,9 @@ Vizuál kopíruje sekundárne tlačidlá témy Previo (Edit / Log time / Watch /
 biele, rámik `--previo-grey200`, radius 8, hover inset tieň. Veľkosť je rovnaká
 ako „Add comment" (min-height 34 px, padding 0 20 px), aby sedeli v jednej línii.
 
-**4. AI issue creator (režim plánu).** V hlavičke, **vedľa ikonky osoby**, je ikonka
-čarovného prútika. Otvorí okno, kde úlohu opíšeš vlastnými slovami a vo svojom
+**4. AI issue creator (režim plánu).** V hlavičke, **vľavo od ikonky osoby**, je ikonka
+čarovného prútika — alebo klávesová skratka **`Ctrl+Shift+X`** (`⇧⌘X` na Macu), ktorá robí to
+isté z akejkoľvek stránky. Otvorí okno, kde úlohu opíšeš vlastnými slovami a vo svojom
 jazyku — projekt vyberať nemusíš. AI navrhne **plán**: buď jednu úlohu, alebo
 nadradenú úlohu s podúlohami. Plán sa dá doupresniť v konverzácii (doplniť text
 alebo odpovedať na otázky) a až **Accept** začne zakladanie.

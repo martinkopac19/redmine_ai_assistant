@@ -78,6 +78,7 @@ sk:
     legend_plan: "Režim plánu (prútik v hlavičke, „AI issue creator\")"
     plan_note: "Nastavenia pre ikonku prútika vedľa ikonky osoby v hlavičke. Úlohu opíšeš vlastnými slovami a vo svojom jazyku, AI navrhne plán — jednu úlohu alebo nadradenú úlohu s podúlohami — a plán sa dá v konverzácii doupresniť. Po „Accept\" sa úlohy predvypĺňajú JEDNA PO DRUHEJ a „Create\" pri každej klikne človek. Poradie je vynútené Redmine: podúloha potrebuje číslo nadradenej úlohy, ktoré vznikne až jej založením."
     button_plan: "AI issue creator"
+    plan_shortcut_hint: "AI issue creator (%{keys})"
     setting_plan_enabled: "Zapnúť režim plánu"
     setting_plan_enabled_info: "Vlastný vypínač, aby sa táto funkcia dala nasadiť aj vypnúť oddelene od ostatných. Vyžaduje aj hlavné zapnutie AI asistenta vyššie. Keď je vypnutá, ikonka prútika sa v hlavičke nezobrazí."
     setting_plan_max_items: "Max. počet úloh v pláne"

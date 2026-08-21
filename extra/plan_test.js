@@ -66,6 +66,7 @@ const I18N = {
             category: 'Kategória', priority: 'Priorita' },
   plan: {
     title: 'AI issue creator', inputLabel: 'Čo treba urobiť?',
+    shortcutHint: 'AI issue creator (%{keys})',
     placeholder: 'Opíš to vlastnými slovami…', projectLock: 'Nemeniť projekt',
     submit: 'See AI suggestion', refine: 'Prepočítať s doplnením', accept: 'Accept',
     working: 'Pripravujem návrh plánu…', heading: 'Návrh plánu',
@@ -476,6 +477,81 @@ function finish() {
   check('po odoslaní sa úloha započíta', qM.items[0].state === 'created');
   check('po odoslaní vznikne nadradená úloha', qM.parentIssueId === '50001', qM.parentIssueId);
   check('príznak sa po započítaní zhasne', qM.submitted === false);
+
+  /* n) KLÁVESOVÁ SKRATKA Ctrl/Cmd+Shift+X.
+   *
+   * Kľúčové je, čo skratku NESMIE spustiť. Na Windows generuje AltGr práve
+   * ctrlKey+altKey, takže bez kontroly na `altKey` by okno vyskakovalo pri
+   * písaní znakov ako @ alebo € na CZ/SK/PL/HU klávesnici. */
+  function pressKey(f, over) {
+    const init = { key: 'X', bubbles: true, ctrlKey: true, shiftKey: true };
+    f.doc.dispatchEvent(new f.w.KeyboardEvent('keydown', Object.assign(init, over || {})));
+  }
+  function planOpen(f) {
+    const ov = f.doc.getElementById('raa-pl-overlay');
+    return !!ov && ov.hidden === false;
+  }
+  function freshPage(html) {
+    const f = makeDom(html || PAGE_MY, 'http://localhost:3080/my/page', PLAN);
+    f.doc.dispatchEvent(new f.w.Event('DOMContentLoaded', { bubbles: true }));
+    return f;
+  }
+
+  const S1 = freshPage();
+  check('pred stlačením je okno zavreté', !planOpen(S1));
+  pressKey(S1);
+  check('Ctrl+Shift+X otvorí okno', planOpen(S1));
+
+  const S2 = freshPage();
+  pressKey(S2, { ctrlKey: false, metaKey: true });
+  check('Cmd+Shift+X otvorí okno (Mac)', planOpen(S2));
+
+  const S3 = freshPage();
+  pressKey(S3, { shiftKey: false });
+  check('Ctrl+X (bez Shift) okno NEOTVORÍ', !planOpen(S3));
+
+  const S4 = freshPage();
+  pressKey(S4, { altKey: true });
+  check('AltGr+Shift+X okno NEOTVORÍ (písanie @ a €)', !planOpen(S4));
+
+  const S5 = freshPage();
+  pressKey(S5, { ctrlKey: false });
+  check('samotné Shift+X okno NEOTVORÍ', !planOpen(S5));
+
+  const S6 = freshPage();
+  pressKey(S6, { key: 'K' });
+  check('Ctrl+Shift+K okno NEOTVORÍ (patrí palete)', !planOpen(S6));
+
+  // Malé x príde, keď prehliadač hlási key bez ohľadu na Shift.
+  const S7 = freshPage();
+  pressKey(S7, { key: 'x' });
+  check('malé x funguje rovnako', planOpen(S7));
+
+  /* Bez prútika v hlavičke (užívateľ nemá kde zakladať, alebo je režim vypnutý)
+   * skratka nesmie robiť nič — okno by vyzeralo funkčne, ale server ho odmietne. */
+  const S8 = freshPage(
+    '<!doctype html><html><head><meta name="csrf-token" content="tok"></head>' +
+    '<body><div id="top-menu"><div id="loggedas">Logged in as ' +
+    '<a href="/users/257">mkopac</a></div></div>' +
+    '<div id="content"><h2>My page</h2></div></body></html>');
+  pressKey(S8);
+  check('bez prútika v hlavičke skratka nič neurobí', !planOpen(S8));
+
+  // Opakované stlačenie pri otvorenom okne nesmie vyrobiť druhé.
+  const S9 = freshPage();
+  pressKey(S9);
+  pressKey(S9);
+  check('druhé stlačenie nezaloží druhé okno',
+    S9.doc.querySelectorAll('#raa-pl-overlay').length === 1,
+    String(S9.doc.querySelectorAll('#raa-pl-overlay').length));
+
+  // Tooltip má skratku napovedať — inak sa nedá objaviť bez dokumentácie.
+  const S10 = freshPage();
+  const wand = S10.doc.querySelector('a[data-raa="plan"]');
+  check('prútik má tooltip so skratkou',
+    !!wand && ((wand.getAttribute('title') || '').indexOf('Ctrl+Shift+X') !== -1 ||
+               (wand.getAttribute('title') || '').indexOf('⇧⌘X') !== -1),
+    wand && wand.getAttribute('title'));
 
   console.log(results.join('\n'));
   const bad = results.filter((r) => r.indexOf('CHYBA') !== -1).length;

@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.5.1 — 2026-08-21
+
+**Keyboard shortcut for the AI issue creator: `Ctrl+Shift+X`** (`⇧⌘X` on a Mac). It does exactly
+what clicking the wand does, from any page, and the wand now carries a tooltip naming the
+shortcut — otherwise nobody would ever find it.
+
+Every more obvious combination was already taken. `Ctrl+K` belongs to the Command Palette (and
+to the Rich Editor, for inserting a link); `Ctrl+Shift+K` is the palette too, and the theme
+itself synthesises that event when the search magnifier is tapped on mobile; `Ctrl+Shift+A` is
+the Rich Editor's attachment picker and opens the add-ons manager in Firefox; and
+`Ctrl+Shift+I/J/C/P/M/R/T/N/O` are all browser features. A mnemonic was not available either —
+`A` (AI), `I` (issue) and `C` (creator) are each spoken for. Of TipTap's own bindings only
+`Mod-Shift-7/8/9/a/b/s` exist, so `X` is free even while the cursor sits in a description.
+
+**The handler deliberately refuses `Ctrl+Alt`.** On Windows, **AltGr** *is* ctrl+alt, and it is
+how `@`, `€`, `ł` and `ß` are typed on Czech, Slovak, Polish and Hungarian layouts — which is to
+say, by exactly the colleagues this is written for. Without that one condition the window would
+pop open while they were typing an email address.
+
+Because it carries a modifier it does not clash with typing, so unlike a bare letter it stays
+active inside text fields — you can summon it straight from a half-written description. It is
+ignored while a *different* dialog of this plugin is open (two stacked windows is a state this
+plugin does not allow), and pressing it again with the window already open just returns focus to
+the input rather than building a second one.
+
+The tooltip text comes through `RAA_CONFIG`, not from `init.rb`: `l()` there would be evaluated
+once when the plugin loads, freezing whichever language happened to be active at the time.
+
 ## 0.5.0 — 2026-08-20
 
 **New: plan mode.** A wand icon sits in the header to the left of the person icon and opens an

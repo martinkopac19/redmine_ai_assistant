@@ -78,6 +78,7 @@ en:
     legend_plan: "Plan mode (wand in the header, \"AI issue creator\")"
     plan_note: "Settings for the wand icon next to the person icon in the header. You describe the work in your own words and your own language, the AI proposes a plan — one issue, or a parent issue with subtasks — and the plan can be refined in conversation. After \"Accept\" the issues are pre-filled ONE AT A TIME and a human clicks \"Create\" for each of them. The order is forced by Redmine: a subtask needs the id of its parent, which only exists once the parent has been created."
     button_plan: "AI issue creator"
+    plan_shortcut_hint: "AI issue creator (%{keys})"
     setting_plan_enabled: "Enable plan mode"
     setting_plan_enabled_info: "A separate switch, so this feature can be rolled out and turned off independently of the others. It also needs the main AI assistant switch above. While it is off, the wand icon is not shown in the header."
     setting_plan_max_items: "Max. issues per plan"

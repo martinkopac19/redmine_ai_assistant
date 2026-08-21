@@ -608,6 +608,24 @@ ensure
           i.name == :ai_issue_creator
         end)}"
 
+  # Klavesova skratka Ctrl/Cmd+Shift+X na okno planu. Kontroluje sa tu preto, ze
+  # tri veci musia sedet naraz: text v troch jazykoch, jeho cesta do js_config
+  # a ochrana proti AltGr.
+  puts "  skratka: kluc vo vsetkych 3 : #{ok(
+        %w[cs sk en].all? do |lang|
+          I18n.with_locale(lang) { I18n.t('ai_assistant.plan_shortcut_hint', :keys => 'X') }
+             .to_s.include?('X')
+        rescue StandardError
+          false
+        end)}"
+  hooks_src = File.read(File.expand_path('../lib/redmine_ai_assistant/hooks.rb', __dir__))
+  puts "  skratka: ide do js_config   : #{ok(hooks_src.include?('shortcutHint'))}"
+  # AltGr je na Windows ctrl+alt, takze bez tejto podmienky by okno vyskakovalo
+  # pri pisani @ alebo € na CZ/SK/PL/HU klavesnici.
+  js_shortcut = File.read(File.expand_path('../assets/javascripts/ai_assistant.js', __dir__))
+  puts "  skratka: chrani AltGr       : #{ok(
+        js_shortcut.include?('|| event.altKey) { return false; }'))}"
+
   # --- 14. bezpecnostne poistky (audit 21. 8. 2026) ------------------------
   #
   # Kazda kontrola v tejto sekcii zodpoveda NAMERANEJ vade, nie domnienke.

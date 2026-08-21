@@ -72,6 +72,8 @@ module RedmineAiAssistant
           :draftProjectChanged => l(:'ai_assistant.draft_project_changed', :project => '%{project}'),
           :plan          => {
             :title       => l(:'ai_assistant.button_plan'),
+            # `%{keys}` doplní JS — Mac ukazuje ⇧⌘X, ostatné Ctrl+Shift+X.
+            :shortcutHint => l(:'ai_assistant.plan_shortcut_hint', :keys => '%{keys}'),
             :inputLabel  => l(:'ai_assistant.plan_input_label'),
             :placeholder => l(:'ai_assistant.plan_input_placeholder'),
             :projectLock => l(:'ai_assistant.plan_project_lock'),

@@ -78,6 +78,7 @@ cs:
     legend_plan: "Režim plánu (kouzelná hůlka v hlavičce, „AI issue creator\")"
     plan_note: "Nastavení pro ikonku hůlky vedle ikonky osoby v hlavičce. Úkol popíšeš vlastními slovy a ve svém jazyce, AI navrhne plán — jeden úkol nebo nadřazený úkol s podúkoly — a plán lze v konverzaci doupřesnit. Po „Accept\" se úkoly předvyplňují JEDEN PO DRUHÉM a „Create\" u každého klikne člověk. Pořadí je vynucené Redmine: podúkol potřebuje číslo nadřazeného úkolu, které vznikne až jeho založením."
     button_plan: "AI issue creator"
+    plan_shortcut_hint: "AI issue creator (%{keys})"
     setting_plan_enabled: "Zapnout režim plánu"
     setting_plan_enabled_info: "Vlastní vypínač, aby se tato funkce dala nasadit i vypnout odděleně od ostatních. Vyžaduje i hlavní zapnutí AI asistenta výše. Když je vypnutá, ikonka hůlky se v hlavičce nezobrazí."
     setting_plan_max_items: "Max. počet úkolů v plánu"

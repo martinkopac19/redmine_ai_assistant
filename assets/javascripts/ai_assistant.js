@@ -130,6 +130,13 @@
     var link = document.querySelector('#top-menu a[data-raa="plan"]');
     if (!link || link.dataset.raaPlaced === '1') { return; }
 
+    /* Popisok patrí sem, nie do `init.rb`: tam by sa `l()` vyhodnotilo raz pri
+     * načítaní pluginu, teda v jazyku, ktorý bol vtedy aktívny. Cez `RAA_CONFIG`
+     * prichádza preložený pri každom requeste. Nastavuje sa PRED presunom, aby
+     * ho prútik mal aj v téme, kde sa presun nepodarí. */
+    var hint = planText('shortcutHint');
+    if (hint) { link.title = hint.replace('%{keys}', shortcutLabel()); }
+
     var topMenu = document.getElementById('top-menu');
     var loggedas = document.getElementById('loggedas');
     if (!topMenu || !loggedas || loggedas.parentNode !== topMenu) { return; }
@@ -325,10 +332,59 @@
     focusQuietly(order[next]);
   }
 
+  /* Klávesová skratka na okno plánu: Ctrl+Shift+X, na Macu Cmd+Shift+X.
+   *
+   * Prečo práve táto kombinácia — všetko ostatné, čo sa ponúkalo, je obsadené:
+   * `Ctrl+K` má Command Palette (a v editore Rich Editor na vloženie odkazu),
+   * `Ctrl+Shift+K` tiež (téma ju navyše sama generuje pri kliknutí na lupu na
+   * mobile), `Ctrl+Shift+A` berie Rich Editor na prílohy a Firefox na správcu
+   * doplnkov, a `Ctrl+Shift+I/J/C/P/M/R/T/N/O` si berie prehliadač. Z TipTapu
+   * je obsadené len `Mod-Shift-7/8/9/a/b/s`, takže `X` je čisté aj v editore.
+   *
+   * `!event.altKey` NIE JE kozmetika: na Windows generuje **AltGr** práve
+   * ctrlKey+altKey, takže bez tejto podmienky by okno vyskakovalo pri písaní
+   * znakov ako `@` alebo `€` na českej, slovenskej, poľskej a maďarskej
+   * klávesnici — teda presne tým kolegom, pre ktorých je to písané.
+   *
+   * Modifikátorová skratka nekoliduje s písaním, preto sa NEvypína v textových
+   * poliach — funguje aj z rozpísaného popisu úlohy. */
+  function shortcutPressed(event) {
+    if (!(event.ctrlKey || event.metaKey) || !event.shiftKey || event.altKey) { return false; }
+    return String(event.key).toLowerCase() === 'x';
+  }
+
+  /* Popisok skratky pre tooltip. Mac má vlastné symboly a písať tam „Ctrl" by
+   * bolo zavádzajúce. navigator.platform je síce deprecated, ale na rozlíšenie
+   * Macu je stále najspoľahlivejšie a pri zlyhaní padá na Ctrl, čo nič nerozbije. */
+  function shortcutLabel() {
+    var mac = false;
+    try {
+      mac = /Mac|iPod|iPhone|iPad/.test(window.navigator.platform || '');
+    } catch (e) { mac = false; }
+    return mac ? '⇧⌘X' : 'Ctrl+Shift+X';
+  }
+
   // Jediný klávesový handler pre všetky okná. Capture fáza, aby predbehol
   // jadrové handlery Redmine (rovnako to robí command palette).
   document.addEventListener('keydown', function (event) {
     var d = topDialog();
+
+    /* Skratka sa vyhodnocuje PRED `if (!d)`, lebo má fungovať práve vtedy, keď
+     * žiadne okno otvorené nie je. Keď ale otvorené je a NIE JE to okno plánu
+     * (napr. zhrnutie úlohy), skratka sa ignoruje — dve okná na sebe sú stav,
+     * ktorý tento plugin zámerne nepripúšťa. */
+    if (shortcutPressed(event)) {
+      var opener = document.querySelector('#top-menu a[data-raa="plan"]');
+      var otherOpen = d && !(pl && d.box === pl.box);
+      if (opener && !otherOpen) {
+        event.preventDefault();
+        event.stopPropagation();
+        // Pri už otvorenom okne to vráti fokus do vstupného poľa, nič sa nezdvojí.
+        openPlanDialog(opener);
+      }
+      return;
+    }
+
     if (!d) { return; }
 
     if (event.key === 'Escape') {
