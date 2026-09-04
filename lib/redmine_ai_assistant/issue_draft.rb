@@ -77,7 +77,12 @@ module RedmineAiAssistant
           # jediný whitelist — keby o tom rozhodoval klient, model by mohol vrátiť
           # plán, ktorý Redmine odmietne: `parent_issue_id` je safe attribute len
           # s právom :manage_subtasks a bez neho sa TICHO zahodí.
-          :subtasks_allowed => RedmineAiAssistant.subtasks_allowed?(project)
+          :subtasks_allowed => RedmineAiAssistant.subtasks_allowed?(project),
+          # Nalezy z hladania v kode repozitara, ktory k projektu patri.
+          # Nova uloha este ziadny merge request nema, takze kluzove slova su
+          # jedine, cim sa da ku kodu dostat — a uz existuju, robia sa pre
+          # hladanie duplicit.
+          :code => CodeContext.draft_section(project, search_keywords, settings)
         }
       end
 

@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.6.0 - 2026-09-04
+
+**The model can read the code now.** Until now the only thing it knew about the
+implementation was a list of commit subjects. It now reads the merge request linked from
+the issue - the description, the code review discussion and the diff - and for a brand new
+issue it searches the repository. Off by default; everything below happens only once
+`code_context_enabled` is on and a GitLab token is stored.
+
+- **Reply suggestion and summary** follow the *Merge request* link on the issue
+  (99.8% of the 8,770 filled values are a plain GitLab URL, so nothing has to be guessed)
+  and add the MR title, state, branches, description, **review comments** and the diff.
+  Review comments are often the single most useful part: what the reviewer objected to in
+  GitLab is usually what the Redmine thread is about.
+- **New issue** has no merge request yet, so the only route to the code is a full-text
+  search. It reuses the English keywords the model already generates for duplicate
+  detection. Which repository belongs to the project is not configured anywhere - it is
+  derived from where that project's merge requests actually point (measured: the dominant
+  repository covers 76-100% for most projects, and the two that genuinely span two repos
+  get both).
+- **Secrets are filtered twice.** Whole files are dropped by path (`.env`, `secrets/`,
+  `*.pem`, `id_rsa`, `auth.json`, anything with *secret*/*credential* in the name) and
+  credential-looking values are masked inside whatever survives. This is not theoretical:
+  the very first code search run during development returned
+  `config/secrets/prod/prod.RABBITMQ_...php` among three results. A file containing a PEM
+  private key block is dropped whole.
+- **A merge request link is only followed when it points at the configured GitLab host.**
+  The field is free text that anyone can edit, so without that check a link to another
+  domain would send the token there.
+- **Budgeted.** `code_diff_limit` (default 40,000 characters) caps the diff, and one file
+  may take at most a quarter of it; the rest is listed by filename. Measured over 10 recent
+  issues, the prompt grows on average from 838 to 19,628 characters - roughly 4,900 input
+  tokens per call instead of 210. Worth watching the Gemini bill for a week.
+- The GitLab token is stored the same way as the Gemini key: encrypted, never rendered back
+  into the page, and an empty field on save keeps the stored value.
+- GitLab being unreachable, unauthorised or slow never breaks a suggestion - the code
+  section is simply missing, and the reason goes to the log. The test server currently
+  cannot reach GitLab at all (its IP is not whitelisted), which is exactly this case.
+- `extra/code_selftest.rb` - 55 checks, almost all offline: link parsing including the
+  foreign-host rejection, the path filters, the masking, the budget, the off switch,
+  graceful degradation, the translations and token storage.
+
 ## 0.5.1 — 2026-08-21
 
 **Keyboard shortcut for the AI issue creator: `Ctrl+Shift+X`** (`⇧⌘X` on a Mac). It does exactly

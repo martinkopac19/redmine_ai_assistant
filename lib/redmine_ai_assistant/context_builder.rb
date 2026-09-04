@@ -131,6 +131,7 @@ module RedmineAiAssistant
         end)
         parts.concat(required_fields_section(opts[:custom_fields]))
         parts.concat(similar_section(opts[:similar]))
+        parts.concat(Array(opts[:code]))
 
         parts.join("\n")
       end
@@ -178,6 +179,7 @@ module RedmineAiAssistant
         end)
         parts.concat(required_fields_section(opts[:custom_fields]))
         parts.concat(similar_section(opts[:similar]))
+        parts.concat(Array(opts[:code]))
 
         parts.join("\n")
       end
@@ -290,6 +292,10 @@ module RedmineAiAssistant
 
         commits = changesets(issue, settings['changeset_limit'].to_i)
         parts << "\n## Související commity\n" + commits.join("\n") if commits.any?
+
+        # Kod z GitLabu (merge request k teto uloze). Vraci prazdno, kdyz je
+        # funkce vypnuta, uloha MR nema nebo je GitLab nedostupny.
+        parts.concat(CodeContext.issue_section(issue, settings))
 
         parts
       end

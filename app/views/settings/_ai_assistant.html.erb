@@ -193,4 +193,60 @@
       <em class="info"><%= l(:'ai_assistant.setting_plan_system_prompt_info') %></em>
     </p>
   </fieldset>
+
+  <fieldset>
+    <legend><%= l(:'ai_assistant.legend_code') %></legend>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_code_enabled') %></label>
+      <%= hidden_field_tag 'settings[code_context_enabled]', '0' %>
+      <%= check_box_tag 'settings[code_context_enabled]', '1',
+            settings['code_context_enabled'].to_s == '1' %>
+      <em class="info"><%= l(:'ai_assistant.setting_code_enabled_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_gitlab_url') %></label>
+      <%= text_field_tag 'settings[gitlab_url]', settings['gitlab_url'], :size => 50 %>
+      <em class="info"><%= l(:'ai_assistant.setting_gitlab_url_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_gitlab_token') %></label>
+      <%# Rovnaky dovod ako pri Gemini kluci: pole je VZDY prazdne, token sa do
+          prehliadaca neposiela nikdy. Prazdne pole ulozeny token nezmaze. %>
+      <%= password_field_tag 'settings[gitlab_token]', nil,
+            :size => 50, :autocomplete => 'off', :id => 'ai_assistant_gitlab_token' %>
+      <em class="info">
+        <% if RedmineAiAssistant::KeyStore.present?(RedmineAiAssistant::KeyStore::GITLAB_KEY) %>
+          <strong><%= l(:'ai_assistant.key_set',
+                        :hint => RedmineAiAssistant::KeyStore.hint(RedmineAiAssistant::KeyStore::GITLAB_KEY)) %></strong><br />
+        <% else %>
+          <strong><%= l(:'ai_assistant.key_missing') %></strong><br />
+        <% end %>
+        <%= l(:'ai_assistant.setting_gitlab_token_info') %>
+      </em>
+    </p>
+
+    <% if RedmineAiAssistant::KeyStore.present?(RedmineAiAssistant::KeyStore::GITLAB_KEY) %>
+      <p>
+        <label><%= l(:'ai_assistant.setting_gitlab_token_clear') %></label>
+        <%= check_box_tag 'settings[gitlab_token_clear]', '1', false %>
+        <em class="info"><%= l(:'ai_assistant.setting_api_key_clear_info') %></em>
+      </p>
+    <% end %>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_code_diff_limit') %></label>
+      <%= text_field_tag 'settings[code_diff_limit]', settings['code_diff_limit'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_code_diff_limit_info') %></em>
+    </p>
+
+    <p>
+      <label><%= l(:'ai_assistant.setting_code_search') %></label>
+      <%= text_field_tag 'settings[code_search_results]', settings['code_search_results'], :size => 8 %>
+      <em class="info"><%= l(:'ai_assistant.setting_code_search_info') %></em>
+    </p>
+  </fieldset>
+
 </div>

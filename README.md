@@ -231,17 +231,43 @@ Popis sa skracuje (default 600 znakov), lebo maximum v produkcii je 91 000 znako
 
 Ďalej sa posielajú súvisiace **natívne changesety** (commit ↔ úloha cez `#1234`).
 
-### Čo NIE je v kontexte: merge requesty
+### Kód z GitLabu (od v0.6.0)
 
-Pole **Merge request** (`cf_67`, formát `link`, vyplnené na 8 087 úlohách) Redmine
-len vykreslí ako odkaz — jeho obsah **nikdy nenačíta**. Do AI teda nejde ani popis
-MR, ani diff, ani diskusia či stav pipeline.
+Pole **Merge request** (formát `link`, vyplnené na 8 770 úlohách, z toho 8 751 je
+plná GitLab URL) sa teraz **naozaj načíta** — ak je zapnuté `code_context_enabled`
+a je uložený GitLab token so scope `read_api`.
 
-Čiastočne to zachraňujú merge commity: GitLab do nich píše názov vetvy, názov MR
-a `See merge request …!NNNN`. V produkcii má 1 658 changesetov odkaz na MR
-a 6 296 je merge commitov, takže hlavička MR sa do kontextu často dostane sama.
+Do promptu potom pribudne:
 
-Na skutočné čítanie MR by bolo treba volať GitLab API (token + nový klient).
+- hlavička MR (názov, stav, vetvy, autor) a jeho popis,
+- **pripomienky z code review** — pri návrhu odpovede často to najcennejšie,
+  lebo v Redmine komentároch sa typicky rieši presne to, čo napísal reviewer,
+- **diff** s rozpočtom (`code_diff_limit`, default 40 000 znakov; jeden súbor
+  smie zabrať najviac štvrtinu, zvyšok sa vypíše len názvami).
+
+Pri **novej úlohe** žiadny MR ešte neexistuje, takže sa namiesto toho hľadá
+v kóde podľa anglických kľúčových slov, ktoré model aj tak vyrába pre hľadanie
+duplicít. Ktorý repozitár k projektu patrí sa nikde nekonfiguruje — odvodí sa
+z toho, kam reálne mieria merge requesty úloh v tom projekte.
+
+**Bezpečnostné poistky** (politika Previa dovoľuje posielať kód do firemného
+Gemini; tajomstvá tým pokryté nie sú):
+
+- súbory sa zahadzujú podľa cesty (`.env`, `secrets/`, `*.pem`, `id_rsa`,
+  `auth.json`, čokoľvek s *secret*/*credential* v názve) — nie je to teoretické,
+  úplne prvý testovací dotaz vrátil `config/secrets/prod/prod.RABBITMQ_…php`,
+- v tom, čo prejde, sa prepisujú hodnoty priradení, ktoré vyzerajú ako heslo,
+  token či kľúč,
+- súbor s blokom privátneho kľúča sa zahodí celý,
+- odkaz na MR sa nasleduje **len keď mieri na nakonfigurovaný GitLab host** —
+  pole vypĺňa človek a bez tejto kontroly by stačilo zapísať cudziu doménu,
+  aby token odišiel tam.
+
+Namerané na 10 posledných úlohách s MR: prompt rastie z priemerných 838 na
+19 628 znakov (~4 900 vstupných tokenov na volanie namiesto 210).
+
+Keď je GitLab nedostupný alebo token chýba, sekcia kódu jednoducho nie je
+a návrh sa vygeneruje bez nej.
 
 ## Gemini API
 

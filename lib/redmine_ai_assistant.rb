@@ -188,7 +188,21 @@ module RedmineAiAssistant
     'plan_max_items'     => '6',
     # Vyššie než `draft_max_tokens` — to je limit pre JEDNU úlohu s popisom podľa
     # šablóny. Pri šiestich položkách plus dôvodoch duplicít prišiel JSON odrezaný.
-    'plan_max_tokens'    => '32768'
+    'plan_max_tokens'    => '32768',
+    # --- kod z GitLabu -------------------------------------------------------
+    # Vlastny vypinac, aby sa dal zapnut a vypnut bez dotyku styroch uz beziacich
+    # funkcii. Vypnuty = plugin GitLab vobec nevola a do promptu nejde ziadny kod.
+    'code_context_enabled' => '0',
+    'gitlab_url'           => 'https://gitlab.previo.info',
+    'gitlab_token'         => '',
+    'gitlab_token_hint'    => '',
+    # Strop na diff v jednom prompte. Namerane na produkcnych MR: median par
+    # stoviek znakov, maximum 59 000 pri 78 suboroch. 40 000 pokryje drviu
+    # vacsinu a zvysok sa vypise len zoznamom nazvov.
+    'code_diff_limit'      => '40000',
+    # Kolko nalezov z hladania v kode sa ponukne pri navrhu NOVEJ ulohy
+    # (na repozitar a klucove slovo). 0 = v kode nehladat.
+    'code_search_results'  => '3'
   }.freeze
 
   class << self
