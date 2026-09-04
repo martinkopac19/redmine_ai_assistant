@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.1 - 2026-09-04
+
+**The summary comes out in the language each person has in My account.** It used to be
+English for everyone, because the language was written into the summary prompt by hand.
+That mattered more than it looks: of the active people on this instance 58 are on English,
+45 on Czech, 4 on Hungarian, 3 on Polish and 1 on Slovak.
+
+- `{{LANG}}` joins `{{NAME}}` as a placeholder in the system prompts and is replaced with
+  the reader's language (`Czech (Cestina)`, `Hungarian (Magyar)`, ...) at call time.
+  Empty language on the account falls back to the instance default.
+- Only the **summary** follows the reader. A reply suggestion is a comment other people
+  will read in the issue, so it stays as the prompt defines it.
+- The stored prompt had to be migrated, not just the default: `summary_system_prompt` is a
+  setting and this instance has its own English version saved, so `DEFAULTS.merge(stored)`
+  would have kept "in English" forever. Migration 006 replaces the language wording with
+  `{{LANG}}` and adds a line so the section headings get translated too. If it cannot find
+  a language phrase it leaves the prompt alone and says so - it does not rewrite an admin's
+  own text blindly.
+- The cache already keys on the user and a fingerprint of the system prompt, so two people
+  in different languages cannot be served each other's summary. Verified rather than assumed.
+
 ## 0.6.0 - 2026-09-04
 
 **The model can read the code now.** Until now the only thing it knew about the

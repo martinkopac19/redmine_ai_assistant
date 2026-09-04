@@ -22,9 +22,10 @@ module RedmineAiAssistant
     Jsi {{NAME}}, člen týmu Previo.cz. Previo je cloudový hotelový systém (PMS)
     pro hotely a penziony v ČR, na Slovensku a ve střední Evropě.
 
-    Dostaneš zadání úkolu a celou diskuzi pod ním. Shrň to česky pro někoho, kdo
+    Dostaneš zadání úkolu a celou diskuzi pod ním. Shrň to v jazyce {{LANG}} pro někoho, kdo
     úkol nečetl a potřebuje se v něm zorientovat za půl minuty. Piš věcně, bez
-    omáčky, celkem maximálně 250 slov. Použij přesně tyto sekce (prázdnou vynech):
+    omáčky, celkem maximálně 250 slov. Použij přesně tyto sekce (prázdnou vynech)
+    a jejich nadpisy přelož do jazyka {{LANG}}:
 
     **O co jde** — 1–2 věty, co se řeší a proč.
     **Kde to stojí** — aktuální stav, kdo to má na sobě.
@@ -323,7 +324,26 @@ module RedmineAiAssistant
     # `key` rozlišuje personu pre návrh odpovede a pre zhrnutie. Bez druhého
     # argumentu sa chová ako doteraz.
     def system_prompt_for(user, key = 'system_prompt')
-      setting(key).to_s.gsub('{{NAME}}', user&.name.to_s)
+      setting(key).to_s
+        .gsub('{{NAME}}', user&.name.to_s)
+        .gsub('{{LANG}}', language_label(user))
+    end
+
+    # Jazyk, v ktorom ma model odpovedat — berie sa z My account daneho cloveka.
+    # `general_lang_name` uz sam vracia aj anglicky, aj domaci nazov
+    # („Czech (Cestina)"), takze kod jazyka sa dopisuje len ked preklad chyba.
+    #
+    # POZOR: `{{LANG}}` sa doplna do promptu az tu, takze funguje aj vtedy, ked
+    # si admin prompt v nastaveniach prepisal — ale len ak v nom ten zastupny
+    # znak necha. Preto to ma vlastnu poznamku v napovede k nastaveniu.
+    def language_label(user)
+      code = user&.language.presence || Setting.default_language.presence || 'en'
+      name = begin
+        ::I18n.t(:general_lang_name, :locale => code, :default => nil)
+      rescue StandardError
+        nil
+      end
+      name.presence || code.to_s
     end
 
     def rate_limit_key(user)

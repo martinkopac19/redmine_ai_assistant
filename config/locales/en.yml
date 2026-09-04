@@ -65,7 +65,7 @@ en:
     setting_summary_description_limit: "Max description characters for the summary"
     setting_summary_description_limit_info: "For a summary the description carries the actual request, so the limit is higher (default 4000). 0 = no truncation at all."
     setting_summary_system_prompt: "System prompt for the summary"
-    setting_summary_system_prompt_info: "A separate persona and, above all, the SHAPE of the summary (sections, length, language) — deliberately here rather than in the code, so it can be rewritten without touching the plugin. {{NAME}} is replaced with the signed-in user's name. An empty field restores the original text."
+    setting_summary_system_prompt_info: "A separate persona and, above all, the SHAPE of the summary (sections, length, language) — deliberately here rather than in the code, so it can be rewritten without touching the plugin. {{NAME}} is replaced with the signed-in user's name. An empty field restores the original text. The summary follows the language each person has in My account: {{LANG}} is replaced with it. Keep {{LANG}} in the text — without it the summary comes out in whatever language this prompt names."
     setting_draft_enabled: "Enable new issue pre-fill"
     setting_draft_enabled_info: "A separate switch, so this feature can be rolled out and turned off independently of reply drafts and summaries. It also needs the main AI assistant switch above."
     setting_draft_similar_limit: "Issues checked for duplicates"

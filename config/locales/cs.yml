@@ -65,7 +65,7 @@ cs:
     setting_summary_description_limit: "Max. znaků popisu pro shrnutí"
     setting_summary_description_limit_info: "U shrnutí nese zadání právě popis, proto je limit vyšší (default 4000). 0 = nezkracovat vůbec."
     setting_summary_system_prompt: "Systémový prompt pro shrnutí"
-    setting_summary_system_prompt_info: "Samostatná persona a hlavně FORMA shrnutí (sekce, délka, jazyk) — je záměrně tady, ne v kódu, abys ji mohl přepsat bez zásahu do pluginu. {{NAME}} se nahradí jménem přihlášeného uživatele. Prázdné pole vrátí původní text."
+    setting_summary_system_prompt_info: "Samostatná persona a hlavně FORMA shrnutí (sekce, délka, jazyk) — je záměrně tady, ne v kódu, abys ji mohl přepsat bez zásahu do pluginu. {{NAME}} se nahradí jménem přihlášeného uživatele. Prázdné pole vrátí původní text. Shrnutí se řídí jazykem, který má člověk v My account: {{LANG}} se jím nahradí. Nech {{LANG}} v textu — bez něj vyjde shrnutí v tom jazyce, který je v tomto promptu napsaný natvrdo."
     setting_draft_enabled: "Zapnout předvyplnění nového úkolu"
     setting_draft_enabled_info: "Vlastní vypínač, aby se tato funkce dala nasadit i vypnout odděleně od návrhu odpovědi a shrnutí. Vyžaduje i hlavní zapnutí AI asistenta výše."
     setting_draft_similar_limit: "Počet úkolů posuzovaných na duplicitu"

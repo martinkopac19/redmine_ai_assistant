@@ -65,7 +65,7 @@ sk:
     setting_summary_description_limit: "Max. znakov popisu pre zhrnutie"
     setting_summary_description_limit_info: "Pri zhrnutí nesie zadanie práve popis, preto je limit vyšší (default 4000). 0 = neskracovať vôbec."
     setting_summary_system_prompt: "Systémový prompt pre zhrnutie"
-    setting_summary_system_prompt_info: "Samostatná persona a hlavne FORMA zhrnutia (sekcie, dĺžka, jazyk) — je zámerne tu, nie v kóde, aby si ju mohol prepísať bez zásahu do pluginu. {{NAME}} sa nahradí menom prihláseného užívateľa. Prázdne pole vráti pôvodný text."
+    setting_summary_system_prompt_info: "Samostatná persona a hlavne FORMA zhrnutia (sekcie, dĺžka, jazyk) — je zámerne tu, nie v kóde, aby si ju mohol prepísať bez zásahu do pluginu. {{NAME}} sa nahradí menom prihláseného užívateľa. Prázdne pole vráti pôvodný text. Zhrnutie sa riadi jazykom, ktorý má človek v My account: {{LANG}} sa ním nahradí. Nechaj {{LANG}} v texte — bez neho vyjde zhrnutie v tom jazyku, ktorý je v tomto prompte napísaný natvrdo."
     setting_draft_enabled: "Zapnúť predvyplnenie novej úlohy"
     setting_draft_enabled_info: "Vlastný vypínač, aby sa táto funkcia dala nasadiť aj vypnúť oddelene od návrhu odpovede a zhrnutia. Vyžaduje aj hlavné zapnutie AI asistenta vyššie."
     setting_draft_similar_limit: "Počet úloh posudzovaných na duplicitu"

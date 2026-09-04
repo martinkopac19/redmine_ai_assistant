@@ -200,6 +200,42 @@ begin
     puts '  (nenasla sa uloha s popisom > 2000 znakov)'
   end
 
+  # --- 6c. jazyk zhrnutia ---------------------------------------------------
+  puts "\n[6c] Jazyk zhrnutia (My account)"
+  saved_lang = user.language
+  begin
+    RedmineAiAssistant.settings # nahriatie
+    langs = { 'cs' => 'e', 'en' => 'E', 'hu' => 'M', 'pl' => 'P' }
+    labels = langs.keys.map do |code|
+      user.update_columns(:language => code)
+      RedmineAiAssistant.language_label(User.find(user.id))
+    end
+    puts "  kazdy jazyk da iny popis   : #{ok(labels.uniq.size == labels.size)} (#{labels.join(', ')})"
+
+    # Zastupny znak sa musi naozaj nahradit, a to v ULOZENOM prompte, nie v defaulte.
+    user.update_columns(:language => 'hu')
+    u = User.find(user.id)
+    prompt = RedmineAiAssistant.system_prompt_for(u, 'summary_system_prompt')
+    puts "  {{LANG}} v prompte nezostal: #{ok(!prompt.include?('{{LANG}}'))}"
+    # Kontroluj presne ten popis, ktory sa do promptu doplna — nie kod jazyka.
+    # Kod v popise nemusi byt: `general_lang_name` vracia „Hungarian (Magyar)".
+    puts "  prompt hovori madarsky     : #{ok(prompt.include?(RedmineAiAssistant.language_label(u)))}"
+
+    user.update_columns(:language => 'cs')
+    cs_prompt = RedmineAiAssistant.system_prompt_for(User.find(user.id), 'summary_system_prompt')
+    puts "  iny jazyk = iny prompt     : #{ok(cs_prompt != prompt)}"
+
+    # Cache nesmie vratit zhrnutie v cudzom jazyku: kluc obsahuje odtlacok promptu.
+    fp = lambda { |txt| Digest::MD5.hexdigest([txt, 'x', 'm'].join("\x00"))[0, 10] }
+    puts "  cache rozlisi jazyky       : #{ok(fp.call(prompt) != fp.call(cs_prompt))}"
+
+    # Bez jazyka v profile sa berie predvolby instancie, nie prazdny retazec.
+    user.update_columns(:language => '')
+    puts "  prazdny jazyk = default    : #{ok(RedmineAiAssistant.language_label(User.find(user.id)).present?)}"
+  ensure
+    user.update_columns(:language => saved_lang)
+  end
+
   # Refaktor nesmie zmeniť prompt pre odpoveď — porovnanie so zloženim „ručne".
   if public_issue
     st = RedmineAiAssistant.settings
