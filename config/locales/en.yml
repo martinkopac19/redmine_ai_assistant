@@ -113,7 +113,7 @@ en:
     setting_draft_system_prompt: "System prompt for the issue pre-fill"
     setting_draft_system_prompt_info: "The persona and the rules for writing issues — among them that the subject and description are ALWAYS in English, and how the tracker is chosen. Do NOT put lists of projects, categories or PMs here, nor the description templates: they are added automatically from Redmine. {{NAME}} is replaced with the signed-in user's name. An empty field restores the original text."
     legend_code: "Code from GitLab"
-    setting_code_enabled: "Send code to the model"
+    setting_code_enabled: "Improve results with information from GitLab"
     setting_code_enabled_info: "When on, the merge request linked from the issue is read from GitLab and its review comments and diff go into the prompt for the reply suggestion and the summary; a new issue gets code search hits. Off means GitLab is never called and no code leaves Redmine. Files that look like they hold secrets are skipped and credential-looking values are masked, but that is a safety net, not a guarantee — turn this on only where sending source code to the model is an accepted policy."
     setting_gitlab_url: "GitLab URL"
     setting_gitlab_url_info: "Base address, e.g. https://gitlab.previo.info. A merge request link on an issue is only followed when it points at this host — otherwise anyone could make the token go somewhere else."

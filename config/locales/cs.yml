@@ -113,7 +113,7 @@ cs:
     setting_draft_system_prompt: "Systémový prompt pro předvyplnění úkolu"
     setting_draft_system_prompt_info: "Persona a pravidla pro psaní úkolů — mimo jiné to, že název a popis jsou VŽDY v angličtině, a podle čeho se vybírá tracker. Seznamy projektů, kategorií a PM ani šablony popisu sem NEPIŠ: doplňují se automaticky z Redmine. {{NAME}} se nahradí jménem přihlášeného uživatele. Prázdné pole vrátí původní text."
     legend_code: "Kód z GitLabu"
-    setting_code_enabled: "Posílat kód modelu"
+    setting_code_enabled: "Zlepšit výstupy informacemi z GitLabu"
     setting_code_enabled_info: "Když je zapnuto, merge request odkázaný z úkolu se načte z GitLabu a jeho review komentáře i diff jdou do promptu pro návrh odpovědi a shrnutí; u nového úkolu přibudou nálezy z hledání v kódu. Vypnuto = GitLab se nevolá vůbec a žádný kód z Redmine neodejde. Soubory, které vypadají na tajemství, se vynechávají a hodnoty podobné heslům se přepisují — je to pojistka, ne záruka. Zapni to jen tam, kde je posílání zdrojového kódu modelu schválená politika."
     setting_gitlab_url: "URL GitLabu"
     setting_gitlab_url_info: "Základní adresa, např. https://gitlab.previo.info. Odkaz na merge request v úkolu se následuje jen tehdy, když míří na tento host — jinak by stačilo zapsat cizí adresu a token by odešel tam."
