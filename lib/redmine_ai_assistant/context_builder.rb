@@ -261,11 +261,14 @@ module RedmineAiAssistant
         out
       end
 
+      # Projekt sa pri každej úlohe uvádza zámerne: kandidáti sa hľadajú cez VŠETKY projekty,
+      # ktoré ten človek vidí, takže nadpis „v tomto projektu" by bol nepravdivý a model by
+      # nemal z čoho napísať, že dvojník leží inde.
       def similar_section(issues)
         return [] if issues.blank?
 
-        ["\n## Existující otevřené úlohy v tomto projektu (posuď možnou duplicitu)",
-         issues.map { |i| "- ##{i.id}: #{i.subject}" }.join("\n")]
+        ["\n## Existující otevřené úlohy napříč projekty (posuď možnou duplicitu)",
+         issues.map { |i| "- ##{i.id} [#{i.project&.name}]: #{i.subject}" }.join("\n")]
       end
 
       # Spoločná časť oboch promptov — a tým jediné miesto, kde sa rozhoduje,

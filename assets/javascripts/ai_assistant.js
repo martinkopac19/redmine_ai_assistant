@@ -796,10 +796,7 @@
     var i18n = CFG.i18n || {};
 
     // Duplicity sú len upozornenie — nič sa neprepája, rozhoduje človek.
-    appendNoteList(panel, i18n.draftSimilar, draft.similar_issues, function (li, item) {
-      li.appendChild(issueLink(item));
-      if (item.reason) { li.appendChild(document.createTextNode(' — ' + item.reason)); }
-    });
+    appendNoteList(panel, i18n.draftSimilar, draft.similar_issues, appendIssueRef);
 
     panel.hidden = !panel.firstChild;
   }
@@ -811,6 +808,21 @@
     link.rel = 'noopener';
     link.textContent = '#' + item.id + ': ' + item.subject;
     return link;
+  }
+
+  /* Duplicity sa hľadajú cez všetky projekty, ktoré ten človek vidí. Keď trefa leží MIMO
+     projektu, kam sa úloha práve zakladá, musí to byť vidieť — inak vyzerá ako úloha
+     „odtiaľto" a nie je z čoho pochopiť, prečo ju človek nepozná. Pri trefe z toho istého
+     projektu sa nedopisuje nič (rozhoduje `other_project` zo servera). */
+  function appendIssueRef(li, item) {
+    li.appendChild(issueLink(item));
+    if (item.other_project && item.project) {
+      var tag = document.createElement('span');
+      tag.className = 'raa-dup-project';
+      tag.textContent = ' (' + item.project + ')';
+      li.appendChild(tag);
+    }
+    if (item.reason) { li.appendChild(document.createTextNode(' — ' + item.reason)); }
   }
 
   /* ------------------------------------------------------------------ *
@@ -1001,8 +1013,7 @@
       var ul = document.createElement('ul');
       similar.forEach(function (item) {
         var li = document.createElement('li');
-        li.appendChild(issueLink(item));
-        if (item.reason) { li.appendChild(document.createTextNode(' — ' + item.reason)); }
+        appendIssueRef(li, item);
         ul.appendChild(li);
       });
       m.body.appendChild(ul);
@@ -1599,8 +1610,7 @@
       ul.className = 'raa-list';
       plan.similar_issues.forEach(function (it) {
         var li = document.createElement('li');
-        li.appendChild(issueLink(it));
-        if (it.reason) { li.appendChild(document.createTextNode(' — ' + it.reason)); }
+        appendIssueRef(li, it);
         ul.appendChild(li);
       });
       m.plan.appendChild(ul);

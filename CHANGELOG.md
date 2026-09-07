@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.2 - 2026-09-07
+
+**Duplicate detection now searches every project the person can see, not just the one on the
+form.** Reported case: a new issue called "POS Tables 500" was offered two loosely related
+issues from POS app and never #56482 "500 error when loading POS Tables - previo2_web host
+cannot be resolved", which lives in Connectors and is a near-verbatim match. The search was
+locked to a single project, so a duplicate filed in a neighbouring project could not be found
+at all - which is exactly the case worth catching, because nobody browses other people's
+projects before writing a ticket.
+
+- Verified on the reported example: the same subject now returns #56482 as the only duplicate,
+  with the model's own reason, and drops the two unrelated ones.
+- **The project is shown** next to a duplicate that lives outside the project the issue is
+  being created in. Without it a foreign issue reads as if it came from here and there is no
+  way to tell why nobody recognises it.
+- **At an equal number of matching keywords the project from the form comes first.** This is a
+  tie-break, not a filter: a stronger match elsewhere still leads. Without it a common keyword
+  ("error") would let the newest hits from anywhere push local issues out of the batch.
+- The prompt now names the project of every candidate and no longer claims they are all "in
+  this project" - the model could not otherwise say that a twin lives elsewhere.
+- Permissions and GDPR are unchanged and now carry more weight: candidates still come from
+  `Issue.visible`, private issues are still excluded, and the selftest covers both - including
+  that someone without access to the other project is not offered its issues.
+
 ## 0.6.1 - 2026-09-04
 
 **The summary comes out in the language each person has in My account.** It used to be

@@ -97,11 +97,16 @@ module RedmineAiAssistant
       # Preklad odpovede modelu na atribúty úlohy. Čo sa nepodarí priradiť
       # k nabídnutej hodnote, sa ZAHODÍ — prázdne pole je lepšie než nesprávne.
       def resolve(data, opts)
+        # Projekt: keď model navrhne iný, prijme sa len ak je medzi tými, kam
+        # užívateľ smie zakladať. Neznámy návrh = zostáva projekt z formulára.
+        target = find_by_name(opts[:projects], data['project']) || opts[:project]
+
         resolve_issue(data, opts).merge(
-          # Projekt: keď model navrhne iný, prijme sa len ak je medzi tými, kam
-          # užívateľ smie zakladať. Neznámy návrh = zostáva projekt z formulára.
-          :project_id     => (find_by_name(opts[:projects], data['project']) || opts[:project])&.id,
-          :similar_issues => resolve_similar(data['similar_issues'], opts[:similar]),
+          :project_id     => target&.id,
+          # `target` ide do duplicít preto, aby sa dalo označiť, ktoré sú z INÉHO projektu
+          # než ten, kam sa úloha práve zakladá — odkedy hľadanie beží cez celý Redmine,
+          # je to podstatná časť informácie.
+          :similar_issues => resolve_similar(data['similar_issues'], opts[:similar], target),
           :questions      => Array(data['questions']).map { |q| squish(q, 300) }.compact.first(3)
         ).reject { |_k, v| v.nil? || (v.respond_to?(:empty?) && v.empty?) }
       end
@@ -168,7 +173,7 @@ module RedmineAiAssistant
           # Každá položka nesie `project_id`, aby bola fronta na klientovi
           # sebestačná a `prefillUrl` nemusel nič dohľadávať.
           :issues           => rows.map { |r| r.merge(:project_id => project&.id) },
-          :similar_issues   => resolve_similar(data['similar_issues'], opts[:similar]),
+          :similar_issues   => resolve_similar(data['similar_issues'], opts[:similar], project),
           :questions        => Array(data['questions']).map { |q| squish(q, 300) }.compact.first(3) }
       end
 
@@ -386,14 +391,18 @@ module RedmineAiAssistant
 
       # Prijmú sa len úlohy, ktoré sme modelu sami nabídli — inak by mohol
       # „upozorniť" na úlohu, ktorú užívateľ nevidí.
-      def resolve_similar(proposed, candidates)
+      def resolve_similar(proposed, candidates, target = nil)
         by_id = Array(candidates).index_by(&:id)
         Array(proposed).filter_map do |row|
           issue = by_id[row['id'].to_i]
           next if issue.nil?
 
           { :id => issue.id, :subject => issue.subject.to_s,
-            :reason => squish(row['reason'], 200).to_s }
+            :reason => squish(row['reason'], 200).to_s,
+            :project => issue.project&.name.to_s,
+            # Len keď je duplicita mimo projektu, kam sa zakladá — v okne sa vtedy dopíše
+            # názov projektu. Pri duplicitách z toho istého projektu by to bol len šum.
+            :other_project => (target.present? && issue.project_id != target.id) }
         end.first(5)
       end
 
@@ -417,13 +426,23 @@ module RedmineAiAssistant
         quoted = tokens.map { |t| ActiveRecord::Base.connection.quote("%#{t}%") }
         matches = quoted.map { |q| "LOWER(issues.subject) LIKE #{q}" }
         score   = matches.map { |m| "(CASE WHEN #{m} THEN 1 ELSE 0 END)" }.join(' + ')
+        # Pri ROVNAKOM počte zhodných slov má prednosť projekt z formulára. Nie je to filter,
+        # len tie-break — keď je zhoda silnejšia inde, ide tá úloha aj tak vpredu. Bez toho by
+        # pri bežnom slove („error") vytlačili domáce úlohy najnovšie trefy z celého Redmine.
+        home = "(CASE WHEN issues.project_id = #{project.id.to_i} THEN 1 ELSE 0 END)"
 
+        # ROZSAH = celý Redmine, ktorý ten človek vidí, nielen projekt z formulára.
+        # Duplicita v cudzom projekte je práve ten prípad, ktorý chce človek pred založením
+        # vidieť najviac: hlásené „POS Tables 500" má near-verbatim dvojníka v projekte
+        # Connectors a s filtrom na jeden projekt nemal ako vyjsť. Práva rieši `Issue.visible`,
+        # takže sa neponúkne nič, čo daný človek vidieť nesmie.
         Issue.visible
              .open
-             .where(:project_id => project.id, :is_private => false)
+             .where(:is_private => false)
              .where(matches.join(' OR '))
-             .order(Arel.sql("(#{score}) DESC, issues.id DESC"))
+             .order(Arel.sql("(#{score}) DESC, #{home} DESC, issues.id DESC"))
              .limit(limit)
+             .includes(:project)
              .to_a
       rescue StandardError => e
         Rails.logger.warn("[ai_assistant] podobne ulohy sa nepodarilo najst: #{e.class}: #{e.message}")

@@ -231,6 +231,24 @@ Popis sa skracuje (default 600 znakov), lebo maximum v produkcii je 91 000 znako
 
 Ďalej sa posielajú súvisiace **natívne changesety** (commit ↔ úloha cez `#1234`).
 
+### Hľadanie duplicít (od v0.6.2 naprieč projektami)
+
+Pri „Create with AI" sa modelu nabídne hŕba otvorených úloh na posúdenie duplicity.
+Hľadá sa **vo všetkých projektoch, ktoré daný človek vidí** — nie len v tom z formulára.
+Dôvod je ten, pre ktorý vznikol nahlásený bug: „POS Tables 500" má near-verbatim
+dvojníka v inom projekte (Connectors) a s filtrom na jeden projekt nemal ako vyjsť,
+pričom práve takú duplicitu nikto sám nenájde — cudzie projekty si pred písaním
+tiketu neprechádza.
+
+- Kandidáti idú z `Issue.visible`, takže sa neponúkne nič, čo daný človek vidieť nesmie;
+  privátne úlohy sú vylúčené vždy.
+- Pri **rovnakom** počte zhodných slov má prednosť projekt z formulára. Je to tie-break,
+  nie filter — silnejšia zhoda inde ide aj tak vpredu.
+- Duplicita mimo projektu, kam sa úloha zakladá, sa v okne označí **názvom projektu**.
+- Hľadanie je obyčajné `LIKE` nad názvami (bez fulltext indexu), spojené cez OR a radené
+  podľa počtu zhodných slov. Jadrový scope `Issue.like` použiť nemožno — spája slová cez
+  AND, takže by sa v názve musela vyskytovať celá veta zo zadania.
+
 ### Kód z GitLabu (od v0.6.0)
 
 Pole **Merge request** (formát `link`, vyplnené na 8 770 úlohách, z toho 8 751 je

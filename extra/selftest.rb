@@ -537,6 +537,123 @@ rescue StandardError => e
 ensure
   Setting.plugin_redmine_ai_assistant = original
     # ---------------------------------------------------------------------------
+  # --- 12b. Duplicity sa hladaju NAPRIEC projektami -------------------------
+  # Nahlaseny bug (7. 9. 2026): "POS Tables 500" nenabidlo #56482 v projekte
+  # Connectors, hoci v nazve doslova ma "POS Tables" — hladanie bolo zamknute
+  # na projekt z formulara. Vsetko sa deje vo vlastnej transakcii a zahodi sa.
+  puts "\n[12b] Duplicity naprieč projektami"
+  User.current = user
+  begin
+    ActiveRecord::Base.transaction do
+      word = "zzdupprobe#{Time.now.to_i}"
+
+      # Projekty v klone maju povinne vlastne polia aj kategoriu — bez ich doplnenia
+      # sa uloha neulozi vobec ("Project manager cannot be blank").
+      make = lambda do |proj, subject|
+        i = Issue.new(project: proj, tracker: proj.trackers.first, author: user,
+                      subject: subject, description: 'selftest')
+        i.category = proj.issue_categories.first if proj.issue_categories.any?
+        i.custom_field_values.each do |cv|
+          cf = cv.custom_field
+          next unless cf.is_required
+          next if cv.value.present?
+
+          opts = begin
+            cf.possible_values_options(proj)
+          rescue StandardError
+            nil
+          end
+          cv.value = if opts.present?
+                       o = opts.first
+                       o.is_a?(Array) ? o.last.to_s : o.to_s
+                     else
+                       cf.field_format == 'bool' ? '1' : 'test'
+                     end
+        end
+        i.save ? i : nil
+      end
+
+      usable = Project.active.select { |p| p.trackers.any? }
+      home = nil
+      away = nil
+      home_issue = nil
+      away_issue = nil
+      usable.each do |p|
+        if home.nil?
+          next unless (home_issue = make.call(p, "#{word} home hit"))
+
+          home = p
+        elsif p.id != home.id
+          next unless (away_issue = make.call(p, "#{word} away hit"))
+
+          away = p
+          break
+        end
+      end
+
+      if away.nil?
+        puts '  (nepodarilo sa vytvorit ulohy v dvoch projektoch — preskocene)'
+      else
+        found = RedmineAiAssistant::IssueDraft.send(:similar_issues, home, { subject: word }, 40, nil)
+        ids = found.map(&:id)
+        puts "  najde ulohu z ineho projektu: #{ok(ids.include?(away_issue.id))}"
+        puts "  najde aj ulohu z domaceho   : #{ok(ids.include?(home_issue.id))}"
+        # Tie-break: pri rovnakom pocte zhodnych slov je domaci projekt prvy.
+        puts "  pri rovnakej zhode domaci prv: #{ok(ids.index(home_issue.id).to_i <
+                                                    ids.index(away_issue.id).to_i)}"
+
+        # Cudzia trefa musi byt v UI oznacena projektom, domaca nie — inak vyzera
+        # uloha z ineho projektu ako "odtialto".
+        proposed = [{ 'id' => away_issue.id, 'reason' => 'test' },
+                    { 'id' => home_issue.id, 'reason' => 'test' }]
+        resolved = RedmineAiAssistant::IssueDraft.send(:resolve_similar, proposed, found, home)
+        away_row = resolved.detect { |r| r[:id] == away_issue.id }
+        home_row = resolved.detect { |r| r[:id] == home_issue.id }
+        puts "  cudzia ma other_project=true: #{ok(away_row && away_row[:other_project] == true)}"
+        puts "  cudzia nesie nazov projektu : #{ok(away_row && away_row[:project] == away.name)}"
+        puts "  domaca ma other_project=false: #{ok(home_row && home_row[:other_project] == false)}"
+
+        # Prompt musi projekt uvadzat, inak model nema z coho napisat, ze dvojnik lezi inde.
+        section = RedmineAiAssistant::ContextBuilder.send(:similar_section, found)
+        puts "  prompt uvadza projekt       : #{ok(section.join("\n").include?("[#{away.name}]"))}"
+        puts "  prompt netvrdi 'tomto projektu': #{ok(!section.join("\n").include?('v tomto projektu'))}"
+
+        # GDPR / prava — po rozsireni rozsahu je toto podstatnejsie nez predtym.
+        # POZOR: `update_columns` tu NEFUNGUJE. Issue ma optimistic locking, takze
+        # Rails dava `lock_version` do WHERE — a cerstvo ulozena uloha ma v DB uz
+        # lock_version 1, kym instancia drzi 0. Update by nenasiel riadok a vratil
+        # by false, teda test by "presel" bez toho, aby uloha bola privatna.
+        Issue.where(id: away_issue.id).update_all(is_private: true)
+        priv = RedmineAiAssistant::IssueDraft.send(:similar_issues, home, { subject: word }, 40, nil)
+        puts "  privatna uloha sa neponukne : #{ok(priv.none? { |i| i.id == away_issue.id })}"
+        Issue.where(id: away_issue.id).update_all(is_private: false)
+
+        # A to iste ocami cloveka, ktory na cudzi projekt nema pravo: `Issue.visible`
+        # musi cudziu ulohu odrezat, aj keby sedela na slovo presne.
+        if away.is_public?
+          puts '  (cudzi projekt je verejny — test viditelnosti preskoceny)'
+        else
+          outsider = User.new(login: "zz_dup_probe_#{Time.now.to_i}", firstname: 'Zz',
+                              lastname: 'Probe', mail: "zz_dup_probe_#{Time.now.to_i}@previo.cz")
+          outsider.password = 'DocasneHesloNaTest-2026'
+          outsider.save!
+          viewer = Role.givable.detect { |r| r.has_permission?(:view_issues) }
+          Member.create!(user: outsider, project: home, roles: [viewer]) if viewer
+          User.current = outsider
+          seen = RedmineAiAssistant::IssueDraft.send(:similar_issues, home, { subject: word }, 40, nil)
+          User.current = user
+          puts "  bez prava cudziu nevidi     : #{ok(seen.none? { |i| i.id == away_issue.id })}"
+          puts "  domacu vidi                 : #{ok(seen.any? { |i| i.id == home_issue.id })}"
+        end
+      end
+
+      raise ActiveRecord::Rollback
+    end
+  rescue StandardError => e
+    puts "  !! SPADLO: #{e.class}: #{e.message}"
+  end
+  User.current = user
+
   puts "\n[13] Rezim planu — schema, whitelist, prava"
   # Sekcia [11] pusta skutocne HTTP requesty a necha po sebe User.current
   # prestaveny (typicky Anonymous) — bez tohto by allowed_to? falosne padalo.

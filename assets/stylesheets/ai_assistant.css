@@ -661,3 +661,7 @@ button.ai-assistant-btn[hidden] { display: none; }
 
 #raa-pl-project-reason[hidden],
 #raa-pl-row[hidden] { display: none; }
+
+/* Názov projektu pri duplicite, ktorá leží MIMO projektu, kam sa úloha zakladá.
+   Stlmený zámerne: je to kontext k odkazu, nie samostatná informácia. */
+.raa-dup-project { color: #666; }
