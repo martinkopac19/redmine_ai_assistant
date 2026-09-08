@@ -202,6 +202,39 @@ a **hostilná fronta podstrčená z konzoly**).
 > sa netestuje. Overuje sa to, čo pozorovateľné je: stav fronty v `sessionStorage`
 > a `href` odkazu „Predvyplniť ďalšiu úlohu".
 
+### Test banneru duplicít cez CDP (od v0.6.3)
+
+Skutočné presmerovanie sa v jsdom otestovať nedá (viď vyššie), a práve na ňom banner
+padal. Preto beží proti **živému** Redmine v headless prehliadači:
+
+```sh
+# 1. testovací užívateľ (admin s jazykom sk — presne ako ten, kto bug hlásil)
+MODE=setup docker compose exec -T --user redmine -e SECRET_KEY_BASE=<key> redmine \
+  bin/rails runner -e production - < extra/dup_fixture.rb
+
+# 2. headless prehliadač s CDP
+msedge --headless=new --disable-gpu --remote-debugging-port=9351 \
+  --user-data-dir=<profil> about:blank &
+
+# 3. test: <base> <login> <heslo> <homeProjectId> <aiProjectId> <dupIssueId> [port]
+node extra/dup_cdp_test.mjs http://localhost:3080 re_dup_admin <heslo> 61 59 56482 9351
+
+# 4. uklid
+MODE=teardown docker compose exec -T --user redmine -e SECRET_KEY_BASE=<key> redmine \
+  bin/rails runner -e production - < extra/dup_fixture.rb
+```
+
+24 kontrol: preklad tlačidla, presmerovanie na projekt navrhnutý AI, banner na novom
+formulári s označením cudzieho projektu, jednorazovosť, banner bez prepnutia projektu
+(regresia), sanitácia podstrčeného obsahu z konzoly, TTL a banner odložený pre iný projekt.
+
+> **Púšťa dve skutočné volania Gemini**, takže berie z hodinového limitu. Odpoveď sa
+> hodinu cachuje, takže opakovaný beh s tým istým zadaním je zadarmo.
+
+Serverovú stranu (aké kľúčové slová model vráti, ktorí kandidáti z toho vyjdú a čo
+vráti hlavné volanie) zaznamenáva `extra/dup_probe.rb` — je commitnutá práve preto,
+aby meranie nemusel nikto robiť znova.
+
 ## GDPR
 
 Obsah úloh a komentárov **opúšťa Redmine** a ide do Google Gemini mimo EU. Plugin
@@ -248,6 +281,26 @@ tiketu neprechádza.
 - Hľadanie je obyčajné `LIKE` nad názvami (bez fulltext indexu), spojené cez OR a radené
   podľa počtu zhodných slov. Jadrový scope `Issue.like` použiť nemožno — spája slová cez
   AND, takže by sa v názve musela vyskytovať celá veta zo zadania.
+
+#### Banner prežije presmerovanie na iný projekt (od v0.6.3)
+
+Keď model navrhne **iný projekt**, `applyDraft` formulár nevypĺňa — opustí stránku
+a ide na `prefillUrl`, aby Redmine prekreslil trackery, kategórie a custom fieldy
+podľa nového projektu. Do v0.6.2 tým banner s duplicitami zmizol: `renderDraftNotes`
+je až za tým `return`. Chýbal teda práve tam, kde má najvyššiu cenu — trefa v cudzom
+projekte je často aj dôvod, prečo model ten projekt navrhol.
+
+Duplicity sa preto pred presmerovaním odložia do `sessionStorage` (rovnaký mechanizmus
+ako fronta plánu) a na novom formulári sa vykreslia.
+
+- Čítajú sa **raz** a pri čítaní sa zmažú — ďalšia úloha banner nezdedí. Naviac vypršia
+  po piatich minútach: má to prežiť jedno presmerovanie, nie celé sedenie.
+- `sessionStorage` je zapisovateľné z konzoly prehliadača, takže obsah prechádza tou
+  istou sanitáciou ako fronta plánu (id musí byť číslo, texty sa krátia, `other_project`
+  musí byť skutočný boolean) a vykresľuje sa z textových nodov, nikdy nie `innerHTML`.
+  Odkaz nikdy nejde z úložiska — skladá ho `issueLink` z čísla úlohy.
+- Banner odložený pre iný projekt sa **zahodí**, nie zobrazí: sedel by pri úlohe,
+  s ktorou nesúvisí.
 
 ### Kód z GitLabu (od v0.6.0)
 

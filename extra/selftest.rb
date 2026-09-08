@@ -844,6 +844,54 @@ ensure
   puts "  fronta: vrateny formular zhasne: #{ok(
         js_src.include?('} else if (!issueId && q.submitted) {'))}"
 
+  # (e) Banner duplicit musi prezit presmerovanie na formular INEHO projektu.
+  #     Ked AI navrhne iny projekt, `applyDraft` stranku opusti
+  #     (`window.location.assign`) a `renderDraftNotes` sa uz nedostane na rad —
+  #     upozornenie tak mizlo prave tam, kde ma najvyssiu cenu (trefa v cudzom
+  #     projekte je casto aj dovod, preco AI ten projekt navrhla).
+  #     NAMERANE 8. 9. 2026, klientske testy su v dup_cdp_test.mjs.
+  apply_src = js_src[/function applyDraft\(draft\).*?\n  \}/m].to_s
+  puts "  duplicity: stash pred odchodom: #{ok(
+        apply_src.include?('stashDraftNotes(draft)') &&
+        apply_src.index('stashDraftNotes') < apply_src.index('window.location.assign'))}"
+  puts "  duplicity: vykresluje sa po nacitani: #{ok(
+        js_src.include?('try { initDraftNotes(); } catch (e) {}'))}"
+  puts "  duplicity: len formular novej ulohy: #{ok(
+        js_src.include?('/\\/issues\\/new\\/?$/.test'))}"
+  # Obsah ide z sessionStorage do DOM, takze musi prejst tou istou sanitaciou
+  # ako fronta planu — id cislom, texty skratene, `other_project` boolean.
+  sanitize_src = js_src[/function sanitizeSimilar\(raw\).*?\n  \}/m].to_s
+  puts "  duplicity: sanitacia id      : #{ok(sanitize_src.include?('intOrNull(raw.id)'))}"
+  puts "  duplicity: sanitacia textov  : #{ok(sanitize_src.scan('safeText(').size >= 3)}"
+  puts "  duplicity: other_project bool: #{ok(
+        sanitize_src.include?("raw.other_project === true"))}"
+  # Jednorazovost: cita sa a maze v jednom kroku, aby banner neprezil na dalsiu
+  # ulohu ani vtedy, ked sa nakoniec nevykresli.
+  take_src = js_src[/function takeDraftNotes\(\).*?\n  \}/m].to_s
+  puts "  duplicity: citanie maze      : #{ok(take_src.include?('store.removeItem(NOTES_KEY)'))}"
+  puts "  duplicity: TTL sa kontroluje : #{ok(take_src.include?('NOTES_TTL'))}"
+
+  # --- 15. preklady ---------------------------------------------------------
+  puts "\n[15] Preklady"
+  # Nepreloz(en)y text sa pozna tak, ze sk/cs hodnota je znak na znak rovnaka ako
+  # anglicka. Vlastne mena (Model, GitLab token) su rovnake opravnene.
+  same_on_purpose = %w[setting_model setting_gitlab_token]
+  locales_dir = File.expand_path('../config/locales', __dir__)
+  base = YAML.load_file(File.join(locales_dir, 'en.yml'))['en']['ai_assistant']
+  %w[sk cs].each do |lang|
+    other = YAML.load_file(File.join(locales_dir, "#{lang}.yml"))[lang]['ai_assistant']
+    puts "  #{lang}: rovnaka sada klucov     : #{ok(other.keys.sort == base.keys.sort)}"
+    left = base.keys.select do |k|
+      base[k].is_a?(String) && other[k] == base[k] && !same_on_purpose.include?(k)
+    end
+    puts "  #{lang}: nic nezostalo anglicky  : #{ok(left.empty?)}" \
+         "#{left.any? ? " (#{left.join(', ')})" : ''}"
+  end
+  puts "  sk: tlacidlo Create with AI  : #{ok(
+        I18n.t('ai_assistant.button_draft', locale: :sk) == 'Vytvoriť s AI')}"
+  puts "  cs: tlacidlo Create with AI  : #{ok(
+        I18n.t('ai_assistant.button_draft', locale: :cs) == 'Vytvořit s AI')}"
+
   puts "\n  (nastavenia pluginu vratene do povodneho stavu)"
 end
 

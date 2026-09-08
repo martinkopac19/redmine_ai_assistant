@@ -826,6 +826,95 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Duplicity musia prežiť presmerovanie na formulár iného projektu.
+   *
+   * Keď AI navrhne iný projekt, `applyDraft` formulár nevyplňuje, ale ide na
+   * `prefillUrl` — stránka sa načíta znova a banner, ktorý na nej plugin
+   * vyrobil, tým zmizne. Práve to bol prípad, kde duplicity chýbali najviac:
+   * trefa v cudzom projekte je typicky aj dôvod, prečo AI ten projekt navrhla.
+   *
+   * Do URL duplicity NEPATRIA — je to text od modelu a adresa už nesie celý
+   * popis úlohy. Nesú sa preto v `sessionStorage`, rovnako ako fronta plánu,
+   * a čítajú sa RAZ: ďalšia úloha už banner nedostane.
+   * ------------------------------------------------------------------ */
+
+  var NOTES_KEY = 'raa.draft.notes';
+  /* Päť minút. Má to prežiť jedno presmerovanie, nie celé sedenie — banner pri
+   * úlohe, ktorú človek zakladá o pol hodiny neskôr, by už len mýlil. */
+  var NOTES_TTL = 5 * 60 * 1000;
+  var NOTES_VERSION = 1;
+
+  function notesStore() {
+    try { return window.sessionStorage; } catch (e) { return null; }
+  }
+
+  function stashDraftNotes(draft) {
+    var store = notesStore();
+    var similar = draft.similar_issues || [];
+    if (!store || !similar.length) { return; }
+
+    try {
+      store.setItem(NOTES_KEY, JSON.stringify({ v: NOTES_VERSION,
+                                                created: Date.now(),
+                                                projectId: String(draft.project_id),
+                                                similar: similar }));
+    } catch (e) {}
+  }
+
+  /* `sessionStorage` je zapisovateľné z konzoly prehliadača a obsah ide do DOM,
+   * takže sa pri čítaní pretláča cez tú istú sanitáciu ako fronta plánu: id musí
+   * byť číslo, texty sa krátia, `other_project` musí byť boolean. */
+  function sanitizeSimilar(raw) {
+    if (!raw || typeof raw !== 'object') { return null; }
+    var id = intOrNull(raw.id);
+    var subject = safeText(raw.subject, 255);
+    if (!id || !subject) { return null; }
+
+    return { id: id, subject: subject,
+             reason: safeText(raw.reason, 200),
+             project: safeText(raw.project, 255),
+             other_project: raw.other_project === true };
+  }
+
+  /* Číta a ZÁROVEŇ maže — banner je jednorazový, aj keď sa nakoniec nevykreslí. */
+  function takeDraftNotes() {
+    var store = notesStore();
+    if (!store) { return null; }
+
+    var raw;
+    try { raw = JSON.parse(store.getItem(NOTES_KEY)); } catch (e) { raw = null; }
+    try { store.removeItem(NOTES_KEY); } catch (e) {}
+
+    if (!raw || raw.v !== NOTES_VERSION || !Array.isArray(raw.similar)) { return null; }
+    if (!(typeof raw.created === 'number' && Date.now() - raw.created < NOTES_TTL)) {
+      return null;
+    }
+
+    var items = raw.similar.map(sanitizeSimilar).filter(function (i) { return i !== null; });
+    if (!items.length) { return null; }
+
+    return { projectId: intOrNull(raw.projectId), similar: items };
+  }
+
+  /* Beží pri načítaní stránky. Vykreslí sa len na formulári NOVEJ úlohy — cesta
+   * sa kontroluje zámerne, `#issue-form` má aj editácia úlohy. Keď je v adrese
+   * iný projekt než ten, pre ktorý duplicity vznikli, banner sa zahodí: sedel by
+   * pri úlohe, s ktorou nesúvisí. */
+  function initDraftNotes() {
+    if (!/\/issues\/new\/?$/.test(String(window.location.pathname))) { return; }
+
+    var stashed = takeDraftNotes();
+    if (!stashed) { return; }
+
+    var current = currentProjectId();
+    if (current && stashed.projectId && String(stashed.projectId) !== String(current)) {
+      return;
+    }
+
+    renderDraftNotes({ similar_issues: stashed.similar });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Okno „AI issue creator".
    *
    * Tlačidlo formulár NEVYPLŇUJE priamo. Najprv sa v okne ukáže návrh, aby bolo
@@ -1151,6 +1240,9 @@
    * všetko ostatné odošle s ním a po prekreslení tam zostane. */
   function applyDraft(draft) {
     if (draft.project_id && String(draft.project_id) !== String(currentProjectId())) {
+      // Presmerovanie zahodí celú stránku, takže upozornenie na duplicity musí
+      // prežiť mimo DOM — inak sa práve v tomto prípade nikdy nezobrazí.
+      stashDraftNotes(draft);
       window.location.assign(prefillUrl(draft));
       return;
     }
@@ -2062,6 +2154,9 @@
     // Panel fronty nesúvisí s formulárom novej úlohy — beží aj na detaile úlohy,
     // preto sa volá pred `draftBox` guardom.
     try { initPlanQueue(); } catch (e) {}
+    // Banner duplicít prenesený z predchádzajúcej stránky. Tiež pred guardom:
+    // rozhoduje adresa, nie to, či sa na tomto projekte vyrenderovalo tlačidlo.
+    try { initDraftNotes(); } catch (e) {}
 
     if (!draftBox()) { return; }
 

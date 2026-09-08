@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.6.3 - 2026-09-08
+
+**The duplicate banner now survives the redirect to another project's form, and the whole UI
+is translated into Slovak and Czech.**
+
+Reported case: a new issue called "POS tables return HTTP 500 on load 0709" got a correct
+description, project and project manager, but no duplicate banner appeared at all — even
+though #56482 in Connectors is a near-verbatim match. The server side was fine: the model
+returned #56482 with its reason. The client threw it away.
+
+- **Cause:** when the model proposes a different project, `applyDraft` does not fill the form
+  — it leaves the page (`window.location.assign(prefillUrl(draft))`) so that Redmine can
+  rebuild trackers, categories and custom fields for the new project. `renderDraftNotes` sits
+  *after* that `return` and never ran. The banner therefore disappeared in exactly the case
+  where it is worth the most: a hit in a foreign project is often the very reason the model
+  suggested that project.
+- **Fix:** the duplicates are stashed in `sessionStorage` before the redirect and rendered on
+  the new form — the same mechanism the plan queue already uses. They are read **once**, so
+  the next issue does not inherit the banner, and they expire after five minutes.
+- The stash never carries a URL or any HTML: it goes through the same sanitation as the plan
+  queue (id must be a number, texts are truncated, `other_project` must be a real boolean),
+  and it is rendered from text nodes. A banner stashed for a different project is dropped
+  rather than shown next to an unrelated issue.
+- **Translations:** `Create with AI`, `AI Summarizer`, `AI issue creator`, `See AI suggestion`
+  and `Accept` were still English in the Slovak and Czech files. All of them are translated
+  now, including the references to them in the settings help texts. The self-test now fails if
+  any `sk`/`cs` value is byte-identical to the English one (`Model` and `GitLab token`
+  excepted — they are proper names).
+- New tests: `extra/dup_cdp_test.mjs` (24 checks against a live Redmine, including the
+  cross-project redirect, one-shot behaviour, TTL and a hostile `sessionStorage` payload) and
+  `extra/dup_fixture.rb`. `extra/dup_probe.rb` records the server-side measurement so nobody
+  has to repeat it. Self-test: 162 checks.
+
 ## 0.6.2 - 2026-09-07
 
 **Duplicate detection now searches every project the person can see, not just the one on the
