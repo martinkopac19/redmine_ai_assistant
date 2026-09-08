@@ -235,6 +235,9 @@ Serverovú stranu (aké kľúčové slová model vráti, ktorí kandidáti z toh
 vráti hlavné volanie) zaznamenáva `extra/dup_probe.rb` — je commitnutá práve preto,
 aby meranie nemusel nikto robiť znova.
 
+`extra/dup_shot.mjs` je k tomu len pomôcka na screenshot výsledného banneru
+(`node extra/dup_shot.mjs <base> <login> <heslo> <homeProjectId> <outPng> [port]`).
+
 ## GDPR
 
 Obsah úloh a komentárov **opúšťa Redmine** a ide do Google Gemini mimo EU. Plugin
