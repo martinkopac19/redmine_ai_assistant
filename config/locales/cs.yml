@@ -56,6 +56,8 @@ cs:
     setting_max_tokens_info: "U modelů s uvažováním se limit dělí mezi uvažování a odpověď — při nízké hodnotě může přijít prázdná odpověď. Méně než 1024 se nedoporučuje."
     setting_rate_limit: "Limit volání na uživatele za hodinu"
     setting_rate_limit_info: "0 = bez limitu. Platí se ze společného klíče, takže limit chrání rozpočet Previa."
+    setting_suggest_enabled: "Zapnout AI návrh odpovědi"
+    setting_suggest_enabled_info: "Tlačítko vedle Přidat komentář na úkolu. Na rozdíl od ostatních funkcí je tato zapnutá výchozí — běžela už předtím, než tento vypínač vznikl, takže její vypnutí je vědomý krok. Vypnutím zmizí tlačítko a zároveň se odmítne i endpoint, takže ho nelze zavolat přímo. Ostatních funkcí se to netýká."
     setting_description_limit: "Max. znaků popisu"
     setting_description_limit_info: "Platí jen pro návrh odpovědi — tam stačí zadání v hrubých obrysech. Shrnutí má vlastní limit níže."
     setting_changeset_limit: "Počet commitů v kontextu"

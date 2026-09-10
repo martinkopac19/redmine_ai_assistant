@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.4 - 2026-09-10
+
+**AI reply suggestion can now be switched off on its own,** from
+*Administration → Plugins → AI Assistant*, in the *Reply suggestion* section. Until now it was
+the only feature without its own switch — the only way to disable it was to turn off the whole
+plugin, which would have taken the summariser, Create with AI and the plan mode with it.
+
+- **The default is ON**, unlike `draft_enabled` and `plan_enabled`. Those two default to off
+  because they were switched on deliberately after being deployed; this feature has been
+  running since 0.1.0, so a default of off would have silently killed it on upgrade and looked
+  like a regression. Switching it off is now a deliberate act.
+- **The switch applies to the endpoint too**, not just to the button. Hiding the button alone
+  would leave `POST /ai_assistant/suggest` callable directly, and a disabled feature would keep
+  spending from the shared company key. Same pattern as `plan_issues` and `draft_issue`.
+- Turning it off leaves the other features untouched — verified by the self-test, which checks
+  that `draft_usable?` and `plan_usable?` still hold with the reply suggestion off.
+- Self-test: 171 checks (9 new). New `extra/suggest_switch_cdp_test.mjs` covers what the
+  self-test cannot — that the checkbox is in the admin page, that saving it works, that the
+  button disappears from the issue and that the endpoint answers 403. It restores the original
+  value at the end.
+
 ## 0.6.3 - 2026-09-08
 
 **The duplicate banner now survives the redirect to another project's form, and the whole UI

@@ -56,6 +56,8 @@ en:
     setting_max_tokens_info: "On reasoning models the limit is shared between thinking and the answer — a low value can yield an empty reply. Below 1024 is not recommended."
     setting_rate_limit: "Calls per user per hour"
     setting_rate_limit_info: "0 = unlimited. Calls are billed to the shared key, so this limit protects Previo's budget."
+    setting_suggest_enabled: "Enable AI reply suggestion"
+    setting_suggest_enabled_info: "The button next to Add comment on an issue. Unlike the other features this one is ON by default, because it was already running before this switch existed — turning it off is a deliberate act. Switching it off hides the button and also refuses the endpoint, so it cannot be called directly. The remaining features are unaffected."
     setting_description_limit: "Max description characters"
     setting_description_limit_info: "Applies to the reply suggestion only — there the gist of the request is enough. The summary has its own limit below."
     setting_changeset_limit: "Commits included in the context"

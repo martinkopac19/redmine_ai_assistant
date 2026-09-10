@@ -69,6 +69,15 @@
     <p class="ai-assistant-hint"><%= l(:'ai_assistant.reply_note') %></p>
 
     <p>
+      <label><%= l(:'ai_assistant.setting_suggest_enabled') %></label>
+      <%# `hidden_field_tag` s '0' je nutné: odškrtnutý checkbox prehliadač
+          neposiela vôbec, takže bez neho by sa vypnutie neuložilo. %>
+      <%= hidden_field_tag 'settings[suggest_enabled]', '0' %>
+      <%= check_box_tag 'settings[suggest_enabled]', '1', settings['suggest_enabled'].to_s == '1' %>
+      <em class="info"><%= l(:'ai_assistant.setting_suggest_enabled_info') %></em>
+    </p>
+
+    <p>
       <label><%= l(:'ai_assistant.setting_description_limit') %></label>
       <%= text_field_tag 'settings[description_limit]', settings['description_limit'], :size => 8 %>
       <em class="info"><%= l(:'ai_assistant.setting_description_limit_info') %></em>

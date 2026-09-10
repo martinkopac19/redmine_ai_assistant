@@ -35,6 +35,13 @@ class AiAssistantController < ApplicationController
   PROJECT_PICK_MAX_TOKENS = 4_096
 
   def suggest
+    # Vypínač musí platiť aj TU, nie len na tlačidle: bez toho by sa endpoint
+    # dal zavolať priamo a vypnutá funkcia by ďalej platila z firemného kľúča.
+    # Rovnaký vzor ako `plan_issues` a `draft_issue`.
+    unless RedmineAiAssistant.suggest_usable?
+      return render_json_error(:'ai_assistant.error_unavailable', :forbidden)
+    end
+
     issue = find_available_issue
     return if issue.nil?
 

@@ -811,6 +811,41 @@ ensure
     puts '  prepinace: PRESKOCENE (uzivatel nesmie nikde zakladat ulohy)'
   end
 
+  # (a2) Navrh odpovede ma vlastny vypinac (od 0.6.4). Dve veci, na ktorych to
+  #      stoji: default je ZAPNUTE (funkcia uz bezala, s '0' by ju nasadenie
+  #      ticho zhaslo) a vypnutie musi platit aj na endpoint, nie len na tlacidlo.
+  sug_base = Setting.plugin_redmine_ai_assistant.to_h
+  puts "  navrh odpovede: default je '1': #{ok(RedmineAiAssistant::DEFAULTS['suggest_enabled'] == '1')}"
+  # Bez ulozenej hodnoty musi platit default — presne to zabezpecuje, ze
+  # nasadenie tejto verzie funkciu nevypne.
+  Setting.plugin_redmine_ai_assistant = sug_base.merge('enabled' => '1').except('suggest_enabled')
+  Setting.clear_cache if Setting.respond_to?(:clear_cache)
+  puts "  navrh odpovede: bez hodnoty zapnuty: #{ok(RedmineAiAssistant.setting('suggest_enabled') == '1')}"
+  [%w[1 true], %w[0 false]].each do |val, want|
+    Setting.plugin_redmine_ai_assistant = sug_base.merge('enabled' => '1', 'suggest_enabled' => val)
+    Setting.clear_cache if Setting.respond_to?(:clear_cache)
+    got = RedmineAiAssistant.suggest_usable?
+    puts "  navrh odpovede: suggest_enabled=#{val} -> #{got}: #{ok(got.to_s == want)}"
+  end
+  # Vypnutie navrhu odpovede sa NESMIE dotknut ostatnych funkcii.
+  Setting.plugin_redmine_ai_assistant = sug_base.merge(
+    'enabled' => '1', 'suggest_enabled' => '0', 'draft_enabled' => '1', 'plan_enabled' => '1'
+  )
+  Setting.clear_cache if Setting.respond_to?(:clear_cache)
+  puts "  navrh odpovede: vypnutie nezhasi draft: #{ok(RedmineAiAssistant.draft_usable?)}"
+  puts "  navrh odpovede: vypnutie nezhasi plan : #{ok(RedmineAiAssistant.plan_usable?)}"
+  Setting.plugin_redmine_ai_assistant = sug_base
+  Setting.clear_cache if Setting.respond_to?(:clear_cache)
+  # Endpoint sa musi pytat na vypinac — inak by vypnuta funkcia zmizla len z UI.
+  ctrl_suggest = File.read(File.expand_path('../app/controllers/ai_assistant_controller.rb', __dir__))
+  puts "  navrh odpovede: endpoint kontroluje : #{ok(
+        ctrl_suggest[/def suggest.*?\n  end/m].to_s.include?('suggest_usable?'))}"
+  view_suggest = File.read(File.expand_path('../app/views/ai_assistant/_issue_actions.html.erb', __dir__))
+  puts "  navrh odpovede: tlacidlo kontroluje : #{ok(view_suggest.include?('suggest_usable?'))}"
+  puts "  navrh odpovede: je v nastaveniach   : #{ok(
+        File.read(File.expand_path('../app/views/settings/_ai_assistant.html.erb', __dir__))
+            .include?('settings[suggest_enabled]'))}"
+
   # (b) CSRF sa musi vynutit aj na .json rutach. Redmine kontrolu preskakuje pre
   #     api_request?, ktore sa riadi VYHRADNE priponou v adrese — POST na
   #     /ai_assistant/plan_issues.json tak presiel bez tokenu a spustil

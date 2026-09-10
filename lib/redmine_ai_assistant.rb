@@ -160,6 +160,11 @@ module RedmineAiAssistant
     'description_limit'   => '600',
     'changeset_limit'     => '5',
     'rate_limit_per_hour' => '30',
+    # Návrh odpovede má vlastný vypínač ako ostatné funkcie.
+    # POZOR na default: na rozdiel od `draft_enabled` a `plan_enabled` je '1',
+    # pretože táto funkcia UŽ BEŽÍ — s '0' by ju nasadenie tejto verzie ticho
+    # zhaslo a vyzeralo by to ako regresia.
+    'suggest_enabled'     => '1',
     'system_prompt'       => DEFAULT_SYSTEM_PROMPT,
     # Zhrnutie stojí a padá na zadání, preto vyšší limit popisu než pri odpovedi.
     'summary_description_limit' => '4000',
@@ -236,6 +241,13 @@ module RedmineAiAssistant
 
     def plan_usable?
       usable? && setting('plan_enabled').to_s == '1'
+    end
+
+    # Návrh odpovede v komentári. Default je zapnuté (viď DEFAULTS), takže
+    # nastavenie treba VYPNÚŤ vedome — a vypnutie platí aj na endpoint, nie
+    # len na tlačidlo, inak by sa dal zavolať priamo.
+    def suggest_usable?
+      usable? && setting('suggest_enabled').to_s == '1'
     end
 
     # Pre ikonku prútika v hlavičke. Beží na KAŽDEJ stránke, preto memoizácia na

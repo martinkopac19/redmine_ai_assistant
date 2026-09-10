@@ -9,6 +9,12 @@ Nahrádza externý Flask nástroj „Redmine Analytics".
 sekundárne tlačidlo **AI reply suggestion**, ktoré vygeneruje návrh odpovede
 a vloží ho do poľa komentára. Text je pred odoslaním editovateľný.
 
+Od v0.6.4 má **vlastný vypínač** (*Zapnúť AI návrh odpovede* v sekcii návrhu
+odpovede). Na rozdiel od ostatných funkcií je **zapnutý defaultne** — funkcia
+bežala už predtým, než vypínač vznikol, takže default `0` by ju pri nasadení
+ticho zhasol. Vypnutie skryje tlačidlo **a zároveň odmietne endpoint**, aby sa
+vypnutá funkcia nedala volať priamo a spotrebovávať firemný kľúč.
+
 **2. AI Summarizer.** V lište akcií úlohy (medzi *Upraviť* a *Zapísať čas*, ikona
 čarovného prútika) je tlačidlo **AI Summarizer**. Otvorí okno nad úlohou so
 zhrnutím **popisu a všetkých verejných komentárov** — zhrnutie sa iba zobrazuje,
@@ -181,6 +187,17 @@ pluginu na konci vráti do pôvodného stavu; do Redmine nič nezapíše.
 ako `redmine`. Bez toho vzniknú v `tmp/cache` súbory vlastnené rootom, ktoré appka
 nedokáže prepísať. Ak sa to už stalo:
 `docker compose exec --user root redmine chown -R redmine:redmine /usr/src/redmine/tmp`
+
+### Vypínač návrhu odpovede (od v0.6.4)
+
+Selftest overí logiku prepínača, ale nie to, či je checkbox naozaj v administrácii
+a či sa uloží. Na to je test proti **živému** Redmine — 13 kontrol vrátane toho, že
+po vypnutí zmizne tlačidlo z úlohy a endpoint vráti **403**. Pôvodnú hodnotu
+nastavenia si na konci vráti, takže konfiguráciu instancie nemení:
+
+```sh
+node extra/suggest_switch_cdp_test.mjs <base> <login> <heslo> <issueId> [port]
+```
 
 ### Klientske testy
 

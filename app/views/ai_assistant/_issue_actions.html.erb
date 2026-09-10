@@ -5,7 +5,10 @@
   issue = defined?(issue) ? issue : nil
 %>
 
-<% if RedmineAiAssistant.available_for_memo?(issue) %>
+<%# `suggest_usable?` je vlastný vypínač tejto funkcie (Administration → Plugins).
+    Je to len čítanie nastavenia, takže memoizáciu netreba — a pýta sa naň aj
+    controller, inak by vypnutá funkcia zmizla len z UI a endpoint by ďalej platil. %>
+<% if RedmineAiAssistant.suggest_usable? && RedmineAiAssistant.available_for_memo?(issue) %>
   <span class="ai-assistant-actions" data-issue-id="<%= issue.id %>">
     <button type="button" class="ai-assistant-btn" data-raa="suggest"
             data-working="<%= l(:'ai_assistant.working') %>">
