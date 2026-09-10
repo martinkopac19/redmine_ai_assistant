@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.5 - 2026-09-10
+
+**Fixes the switch added in 0.6.4: the checkbox showed *off* although the feature was
+running,** and the first save of the settings page would then genuinely have turned it off.
+
+Redmine passes the **stored** settings hash into a plugin's settings partial, not the
+effective one. On an instance that has saved its settings before, `suggest_enabled` is simply
+absent from that hash, so `settings['suggest_enabled'].to_s == '1'` was false and the checkbox
+rendered unticked — while `RedmineAiAssistant.setting` was returning the `'1'` default and the
+button was on the issue. The other switches are immune because their default is `'0'`, where a
+missing value renders unticked correctly.
+
+The checkbox now reads `RedmineAiAssistant.setting('suggest_enabled')`. The self-test asserts
+it (a grep over the partial), so the shortcut cannot creep back in.
+
+This was not theoretical: `extra/suggest_switch_cdp_test.mjs` read the unticked box as "the
+original value", restored it at the end and left the feature **switched off on the test
+server**. The test now finishes with the switch **on** — the default, and a safe state —
+rather than trying to restore what it read.
+
 ## 0.6.4 - 2026-09-10
 
 **AI reply suggestion can now be switched off on its own,** from

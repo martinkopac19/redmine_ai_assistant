@@ -102,6 +102,16 @@ check('je v sekcii navrhu odpovede (nie u draftu ani planu)',
   })()`), true);
 const orig = await ev(`${CB}.checked`);
 console.log('  pociatocna hodnota: ' + orig);
+/* Default je ZAPNUTE, takze odskrtnuty checkbox pri prvom nacitani znamena
+ * jedno z dvoch: admin funkciu vedome vypol, ALEBO partial cita `settings[...]`
+ * namiesto efektivnej hodnoty a ukazuje vypnute, hoci funkcia bezi.
+ * To druhe je chyba, kvoli ktorej tento test 10. 9. 2026 funkciu na serveri
+ * naozaj vypol (ulozil na konci „povodnu\" hodnotu false). Preto sa to hlasi. */
+check('checkbox odraza EFEKTIVNU hodnotu (default je zapnute)', orig, true);
+if (orig !== true) {
+  console.log('  !! POZOR: checkbox je odskrtnuty. Ak si funkciu nevypol vedome,');
+  console.log('  !! partial cita ulozeny hash namiesto RedmineAiAssistant.setting().');
+}
 
 console.log('\n[2] ZAPNUTE: tlacidlo je na ulohe a endpoint pusti');
 await setSwitch(true);
@@ -130,13 +140,13 @@ await setSwitch(true);
 await nav(BASE + '/issues/' + ISSUE);
 check('tlacidlo je zas na stranke', await ev(`!!${BTN}`), true);
 
-// Vratenie do povodneho stavu, aby test nemenil konfiguraciu instancie.
-if (orig !== true) {
-  await setSwitch(orig);
-  console.log('\n  (nastavenie vratene na povodnu hodnotu: ' + orig + ')');
-} else {
-  console.log('\n  (povodna hodnota bola zapnute — netreba nic vracat)');
-}
+/* Test konci so ZAPNUTYM vypinacom — zamerne.
+ *
+ * Pokus „vratit povodnu hodnotu\" tu uz raz skodil: partial ukazoval odskrtnute
+ * kvoli chybe, test to precital ako povodny stav a na konci funkciu na serveri
+ * vypol. Default je zapnute, takze skoncit zapnuty je bezpecny stav; keby ju
+ * niekto vedome vypol, vypne si ju znova jednym klikom. */
+console.log('\n  (vypinac zostava ZAPNUTY — bezpecny stav, viac k tomu v komentari testu)');
 
 console.log('\n' + '='.repeat(80));
 console.log('  ' + OK.length + ' OK, ' + BAD.length + ' chyb');

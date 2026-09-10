@@ -73,7 +73,14 @@
       <%# `hidden_field_tag` s '0' je nutné: odškrtnutý checkbox prehliadač
           neposiela vôbec, takže bez neho by sa vypnutie neuložilo. %>
       <%= hidden_field_tag 'settings[suggest_enabled]', '0' %>
-      <%= check_box_tag 'settings[suggest_enabled]', '1', settings['suggest_enabled'].to_s == '1' %>
+      <%# Efektívna hodnota, NIE `settings[...]`. Redmine posiela do partialu
+          ULOŽENÝ hash z DB a `suggest_enabled` v ňom na existujúcich instanciách
+          chýba (pridalo sa až v 0.6.4) — checkbox by teda ukazoval vypnuté, hoci
+          funkcia beží z defaultu '1', a prvé uloženie nastavení by ju naozaj
+          vyplo. Pri ostatných vypínačoch to nevadí: ich default je '0', takže
+          chýbajúca hodnota vyjde ako odškrtnuté správne. %>
+      <%= check_box_tag 'settings[suggest_enabled]', '1',
+            RedmineAiAssistant.setting('suggest_enabled').to_s == '1' %>
       <em class="info"><%= l(:'ai_assistant.setting_suggest_enabled_info') %></em>
     </p>
 

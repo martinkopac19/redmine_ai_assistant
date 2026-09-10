@@ -842,9 +842,16 @@ ensure
         ctrl_suggest[/def suggest.*?\n  end/m].to_s.include?('suggest_usable?'))}"
   view_suggest = File.read(File.expand_path('../app/views/ai_assistant/_issue_actions.html.erb', __dir__))
   puts "  navrh odpovede: tlacidlo kontroluje : #{ok(view_suggest.include?('suggest_usable?'))}"
-  puts "  navrh odpovede: je v nastaveniach   : #{ok(
-        File.read(File.expand_path('../app/views/settings/_ai_assistant.html.erb', __dir__))
-            .include?('settings[suggest_enabled]'))}"
+  set_view = File.read(File.expand_path('../app/views/settings/_ai_assistant.html.erb', __dir__))
+  puts "  navrh odpovede: je v nastaveniach   : #{ok(set_view.include?('settings[suggest_enabled]'))}"
+  # Checkbox musi citat EFEKTIVNU hodnotu, nie `settings[...]`. Redmine posiela do
+  # partialu ULOZENY hash z DB a `suggest_enabled` v nom na existujucich
+  # instanciach chyba (pridalo sa az v 0.6.4) — checkbox by ukazoval vypnute,
+  # hoci funkcia bezi z defaultu '1', a prve ulozenie nastaveni by ju vyplo.
+  # NAMERANE 10. 9. 2026: stalo sa to na testovacom serveri.
+  puts "  navrh odpovede: checkbox cita default: #{ok(
+        set_view[/settings\[suggest_enabled\][^%]*?%>/m].to_s
+          .include?("RedmineAiAssistant.setting('suggest_enabled')"))}"
 
   # (b) CSRF sa musi vynutit aj na .json rutach. Redmine kontrolu preskakuje pre
   #     api_request?, ktore sa riadi VYHRADNE priponou v adrese — POST na
