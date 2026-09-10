@@ -849,9 +849,12 @@ ensure
   # instanciach chyba (pridalo sa az v 0.6.4) — checkbox by ukazoval vypnute,
   # hoci funkcia bezi z defaultu '1', a prve ulozenie nastaveni by ju vyplo.
   # NAMERANE 10. 9. 2026: stalo sa to na testovacom serveri.
+  # Kontrola je zamerne dvojita a bez regexu na blok: `settings[suggest_enabled]`
+  # je v partiali DVAKRAT (hidden_field + check_box) a regex, ktory bral prvy
+  # vyskyt, hlasil chybu aj pri spravnom kode.
   puts "  navrh odpovede: checkbox cita default: #{ok(
-        set_view[/settings\[suggest_enabled\][^%]*?%>/m].to_s
-          .include?("RedmineAiAssistant.setting('suggest_enabled')"))}"
+        set_view.include?("RedmineAiAssistant.setting('suggest_enabled')") &&
+        !set_view.include?("settings['suggest_enabled']"))}"
 
   # (b) CSRF sa musi vynutit aj na .json rutach. Redmine kontrolu preskakuje pre
   #     api_request?, ktore sa riadi VYHRADNE priponou v adrese — POST na
