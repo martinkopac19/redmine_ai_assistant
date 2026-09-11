@@ -61,6 +61,13 @@ module RedmineAiAssistant
         :i18n          => {
           :close         => l(:'ai_assistant.close'),
           :summaryTitle  => l(:'ai_assistant.summary_title', :issue => '%{issue}'),
+          # Lišta s prepínačom jazyka pod zhrnutím. Samotný číselník jazykov
+          # chodí až v odpovedi na /ai_assistant/summary — tu by tých ~50
+          # položiek sedelo v HTML každej stránky Redmine.
+          :summaryLangAsk     => l(:'ai_assistant.summary_lang_ask'),
+          :summaryLangChange  => l(:'ai_assistant.summary_lang_change'),
+          :summaryLangLabel   => l(:'ai_assistant.summary_lang_label'),
+          :summaryLangWorking => l(:'ai_assistant.summary_lang_working'),
           :draftFilled   => l(:'ai_assistant.draft_filled'),
           :draftSimilar  => l(:'ai_assistant.draft_similar'),
           :draftQuestions => l(:'ai_assistant.draft_questions'),

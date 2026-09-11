@@ -53,14 +53,34 @@ class AiAssistantController < ApplicationController
 
   # Zhrnutie celej úlohy (popis + verejné komentáre). Len sa zobrazí v overlay
   # okne — nikam sa nevkladá a do Redmine sa nič nezapisuje.
+  # Jazyk zhrnutia má vlastný prepínač priamo v okne. Keď príde `lang`, je to
+  # vedomá voľba človeka — uloží sa mu k účtu a platí aj v ďalších úlohách.
+  # Bez `lang` sa použije jeho predošlá voľba, a keď žiadnu nemá, jazyk
+  # z My account (pôvodné správanie).
   def summary
     issue = find_available_issue
     return if issue.nil?
 
+    lang = if params[:lang].present?
+             RedmineAiAssistant.store_summary_language(User.current, params[:lang])
+           else
+             RedmineAiAssistant.summary_language(User.current)
+           end
+
     settings = RedmineAiAssistant.settings
     deliver('summary', issue,
-            RedmineAiAssistant.system_prompt_for(User.current, 'summary_system_prompt'),
-            RedmineAiAssistant::ContextBuilder.summary_prompt(issue, settings))
+            RedmineAiAssistant.system_prompt_for(User.current, 'summary_system_prompt', lang),
+            RedmineAiAssistant::ContextBuilder.summary_prompt(issue, settings),
+            # Mimo cache: `chosen` sa mení aj vtedy, keď si človek vyberie ten
+            # istý jazyk, aký mal z My account — prompt je rovnaký, takže by sa
+            # vrátil cachovaný payload s pôvodným `chosen: false` a lišta by
+            # ďalej ponúkala „Chceš to vo svojom jazyku?".
+            :lang       => RedmineAiAssistant.language_code_for_summary(User.current, lang),
+            :langChosen => !RedmineAiAssistant.summary_language(User.current).nil?,
+            # Číselník ide v odpovedi, nie v konfigurácii v layoute: okno ho
+            # potrebuje až keď zhrnutie príde, a v layoute by tých ~50 jazykov
+            # sedelo v HTML každej stránky Redmine zbytočne.
+            :langs      => language_options)
   end
 
   # Predvyplnenie novej úlohy z krátkeho zadania. Nič sa neukladá — vracia sa
@@ -358,13 +378,16 @@ class AiAssistantController < ApplicationController
   # Samotné účtovanie limitu ale NIE JE tu, lež v `ask_model`. Pomocné volania
   # (výber projektu, preklad kľúčových slov) sa robia ešte pred zostavením cache
   # kľúča, takže kontrola na tomto mieste ich nevidela a dala sa nimi obísť.
-  def with_ai_guard(key)
+  # `extra` sa pripája k odpovedi AŽ pri renderovaní a do cache sa neukladá —
+  # sú to polia, ktoré sa môžu zmeniť bez toho, aby sa zmenil prompt (a teda
+  # cache kľúč). Dnes ich používa len zhrnutie na stav prepínača jazyka.
+  def with_ai_guard(key, extra = {})
     cached = Rails.cache.read(key)
-    return render(:json => cached.merge(:cached => true)) if cached.present?
+    return render(:json => cached.merge(extra).merge(:cached => true)) if cached.present?
 
     payload = yield
     Rails.cache.write(key, payload, :expires_in => 1.hour)
-    render :json => payload
+    render :json => payload.merge(extra)
   rescue RedmineAiAssistant::GeminiClient::Error => e
     render_ai_error(e)
   end
@@ -382,13 +405,37 @@ class AiAssistantController < ApplicationController
     (["ai_assistant_#{prefix}"] + scope_parts + [User.current.id, fingerprint]).join(':')
   end
 
-  def deliver(prefix, issue, system_prompt, user_prompt)
+  def deliver(prefix, issue, system_prompt, user_prompt, extra = {})
     key = cache_key(prefix, [issue.id, issue.journals.maximum(:id).to_i],
                     system_prompt, user_prompt)
-    with_ai_guard(key) do
+    with_ai_guard(key, extra) do
       charge_quota!
       { :text => client.complete(system_prompt, user_prompt) }
     end
+  end
+
+  # Ten istý zoznam, aký ponúka My account — každý jazyk vo vlastnom názve
+  # („Čeština", „Slovenčina"). Zámerne sa nerobí vlastný užší výber: keď si
+  # niekto vyberie maďarčinu v My account, má ju nájsť aj tu.
+  # Trhy, na ktorých Previo pôsobí. Idú v selecte navrch — v tomto poradí,
+  # nie abecedne: v úplnom zozname 50 jazykov by sa slovenčina hľadala niekde
+  # medzi sinhalčinou a srbčinou.
+  SUMMARY_LANG_TOP = %w[cs sk hu pl ro de hr].freeze
+
+  # Bez prefixu `Redmine::I18n.` — sú to instance metódy, ktoré jadro includuje
+  # do ApplicationController; s prefixom to padá na NoMethodError.
+  #
+  # Vracia dve skupiny (v selecte z nich budú `<optgroup>`): bez vizuálneho
+  # oddelenia by prehodené poradie vyzeralo ako pokazené triedenie.
+  def language_options
+    all = languages_options.map { |label, code| { :code => code, :label => label } }
+    by_code = all.index_by { |o| o[:code] }
+
+    # `compact` kvôli tomu, keby Redmine niektorý z jazykov prestal dodávať —
+    # vypadne zo zoznamu, nezhodí select.
+    top = SUMMARY_LANG_TOP.map { |c| by_code[c] }.compact
+    [{ :group => l(:'ai_assistant.summary_lang_group_top'),  :items => top },
+     { :group => l(:'ai_assistant.summary_lang_group_rest'), :items => all - top }]
   end
 
   def require_usable

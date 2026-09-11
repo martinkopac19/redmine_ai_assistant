@@ -202,6 +202,101 @@ button#raa-close:hover {
   font-weight: 500;
 }
 
+/* Lišta s voľbou jazyka pod zhrnutím. Oddelená linkou a menším, svetlejším
+ * písmom: je to ponuka, nie súčasť zhrnutia. `.raa-h:first-child` nižšie rieši
+ * odsadenie prvého nadpisu — lišta je vždy posledná, preto stačí margin hore. */
+.raa-langbar {
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid var(--previo-grey200, #e4e4e4);
+  font-size: 0.85rem;
+  color: var(--previo-grey500, #6b6b6b);
+}
+
+.raa-langlink {
+  color: var(--previo-primary, #0074bd);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.raa-langlink:hover {
+  text-decoration: underline;
+}
+
+.raa-langpick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Select podľa Previo design systému.
+ *
+ * PREČO SA TU PRAVIDLÁ OPAKUJÚ: téma štýluje selecty selektorom
+ * `#content select:not([multiple])`, lenže okno zhrnutia visí priamo na
+ * `document.body` (musí, aby ho neorezal `overflow` obsahu), takže je MIMO
+ * `#content` a žiadne z tých pravidiel naň nedosiahne. Preto sú tu znovu —
+ * hodnoty sú tie isté tokeny, takže sa menia na jednom mieste v téme.
+ *
+ * Fallbacky vo `var()` sú tam kvôli inštancii bez Previo témy: plugin má
+ * vyzerať rozumne aj na holom Redmine. */
+.raa-langselect {
+  max-width: 260px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--previo-grey300, #ccc);
+  border-radius: var(--previo-radius, 8px);
+  min-height: var(--previo-select-height, 30px);
+  height: var(--previo-select-height, 30px);
+  padding: 0 28px 0 8px;
+  background-color: #fff;
+  /* Rovnaký chevron ako v téme — vlastný, lebo `appearance: none` zhasne
+     natívnu šípku. */
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23515151" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  font-family: var(--fonts-main, inherit);
+  font-size: 0.85rem;
+  color: var(--previo-grey600, #202124);
+}
+
+.raa-langselect:focus {
+  border-color: var(--previo-primary, #0074bd);
+  outline: 2px solid var(--previo-primary-transparent, rgba(0, 116, 189, 0.25));
+}
+
+/* Rozbalený zoznam podľa DS — len tam, kde to prehliadač vie (Chromium).
+ * Inde ostáva natívny, presne ako to rieši téma. */
+@supports (appearance: base-select) {
+  .raa-langselect {
+    appearance: base-select;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .raa-langselect::picker-icon { display: none; }
+
+  .raa-langselect::picker(select) {
+    appearance: base-select;
+    background: #fff;
+    border: 1px solid var(--previo-grey200, #e4e4e4);
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(10, 10, 10, 0.15);
+    padding: 6px 0;
+  }
+
+  .raa-langselect option {
+    padding: 8px 14px;
+    font-family: var(--fonts-main, inherit);
+  }
+
+  .raa-langselect optgroup {
+    padding: 4px 0;
+    font-weight: 600;
+    color: var(--previo-grey500, #515151);
+  }
+}
+
 /* Vyrenderovaný Markdown. Scopované na triedu `.raa-rich`, nie na `#raa-body`:
  * ten istý renderer plní aj ďalšie okná (súhrn plánu), a s id-selektorom by tam
  * text zostal neformátovaný. Trieda je stále dosť úzka, aby nepresakovala do

@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.7.0 - 2026-09-11
+
+**The summary now has its own language picker.** Roughly half the people here run Redmine in
+English even though they are Czech or Slovak, and they do not want to switch the whole interface
+just to read one summary in their own language.
+
+- Under the summary text there is now a line: *"Want this in your own language? Click here."*
+  It turns into a language select — the same list My account offers, each language in its own
+  name. Once a choice has been made, the line reads *"Want a different language?"* instead.
+- **The languages Previo actually works in come first** — Czech, Slovak, Hungarian, Polish,
+  Romanian, German, Croatian — in that order, then the full list. They sit in two `<optgroup>`s,
+  because a reordered list without a visible split just looks like broken sorting.
+- The select carries the **design system styling**. It has to repeat the theme's rules rather
+  than inherit them: the theme styles `#content select`, and this window hangs off `document.body`
+  (it must, or the page's `overflow` would clip it), so none of those rules reach it. It looked
+  like a raw browser select until this was added.
+- **The choice is stored with the account** (`UserPreference#others`, no migration), so it holds
+  across issues, across sessions and across machines — not just in one browser.
+- Picking a language **regenerates the summary right away**. Re-picking the language that is
+  already active does nothing, so it cannot burn a call from the hourly quota for no result.
+- **Scope is deliberately narrow: this is the summary only.** The reply suggestion and the other
+  features keep following My account. The language reaches the model through the existing
+  `{{LANG}}` placeholder, so an admin's own prompt keeps working as long as it still has it.
+
+Two things worth knowing about the implementation:
+
+- The language code arrives from the client and goes straight into the model's system prompt, so
+  it is validated against `Redmine::I18n.valid_languages` before anything is stored or sent.
+  Without that check anyone could push arbitrary text into the prompt.
+- `langChosen` is attached to the response **outside the cache**. It changes even when the picked
+  language equals the one from My account — the prompt is then identical, the cached payload
+  would come back with the old flag, and the bar would keep offering "in your own language".
+
 ## 0.6.5 - 2026-09-10
 
 **Fixes the switch added in 0.6.4: the checkbox showed *off* although the feature was

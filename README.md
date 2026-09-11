@@ -21,6 +21,17 @@ zhrnutím **popisu a všetkých verejných komentárov** — zhrnutie sa iba zob
 nikam sa nevkladá. Okno sa zatvára krížikom, klávesom Esc alebo klikom mimo;
 zatvorenie počas generovania požiadavku zruší.
 
+**Jazyk zhrnutia má vlastný prepínač** (v0.7.0). Zhrnutie prichádza v jazyku
+z *My account*, ale pod textom je lišta *„Chceš to vo svojom jazyku? Klikni sem."* —
+po kliknutí sa objaví výber jazyka a zhrnutie sa hneď pregeneruje. Voľba sa ukladá
+**k účtu**, takže platí aj v ďalších úlohách a aj z iného počítača; lišta potom
+ponúka *„Chceš iný jazyk?"*. Navrchu zoznamu sú trhy Previa (čeština, slovenčina,
+maďarčina, poľština, rumunčina, nemčina, chorvátčina), pod nimi celý zoznam
+jazykov Redmine. Vzniklo to preto, že **polovica ľudí má Redmine v angličtine,
+aj keď sú Česi alebo Slováci**, a kvôli jednému zhrnutiu si celé rozhranie
+prepínať nechcú. Voľba platí **len pre zhrnutie** — návrh odpovede a ostatné
+funkcie sa ďalej riadia *My account*.
+
 **3. Create with AI.** Na formulári novej úlohy je **vedľa nadpisu „New issue"**
 tlačidlo **Create with AI**, ktoré sa aktivuje, keď je vyplnený názov alebo popis.
 Zo stručného zadania (česky, slovensky, anglicky) určí **projekt**, **názov a popis

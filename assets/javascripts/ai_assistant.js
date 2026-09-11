@@ -609,28 +609,116 @@
     ovOpener = null;
   }
 
-  document.addEventListener('click', function (event) {
-    var link = event.target.closest('a[data-raa="summary"]');
-    if (!link) { return; }
-    event.preventDefault();
+  /* Prepínač jazyka zhrnutia.
+   *
+   * Zhrnutie ide štandardne v jazyku z My account, lenže polovica ľudí má
+   * Redmine v angličtine, aj keď sú Česi alebo Slováci — a kvôli jednému
+   * zhrnutiu si celé rozhranie prepínať nechcú. Preto má zhrnutie vlastnú
+   * voľbu jazyka; ukladá sa človeku k účtu (nie do localStorage), takže platí
+   * aj z iného počítača a aj v ďalších úlohách.
+   *
+   * Lišta je pod textom, nie v hlavičke okna: kým človek zhrnutie nevidí,
+   * nemá dôvod riešiť jazyk. Text sa líši podľa toho, či už voľbu niekedy
+   * urobil („Chceš to vo svojom jazyku?" vs. „Chceš iný jazyk?").
+   *
+   * Vedomé obmedzenie: voľba platí LEN pre zhrnutie. Návrh odpovede a ostatné
+   * funkcie ďalej idú podľa My account. */
+  function summaryLangBar(data, issueId, issueLabel) {
+    var i18n = CFG.i18n || {};
+    var bar = document.createElement('div');
+    bar.className = 'raa-langbar';
 
+    var link = document.createElement('a');
+    link.href = '#';
+    link.className = 'raa-langlink';
+    link.textContent = data.langChosen
+      ? (i18n.summaryLangChange || 'Want a different language?')
+      : (i18n.summaryLangAsk || 'Want this in your own language?');
+
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      // Odkaz sa nahradí samotným selectom. Dva kroky (odkaz → select) sú tu
+      // zámerne: lišta pod zhrnutím zostáva nenápadná, kým ju nikto nechce.
+      bar.replaceChild(buildLangSelect(data, issueId, issueLabel), link);
+      var sel = bar.querySelector('select');
+      if (sel) { focusQuietly(sel); }
+    });
+
+    bar.appendChild(link);
+    return bar;
+  }
+
+  function buildLangSelect(data, issueId, issueLabel) {
+    var i18n = CFG.i18n || {};
+    var wrap = document.createElement('span');
+    wrap.className = 'raa-langpick';
+
+    var sel = document.createElement('select');
+    sel.id = 'raa-lang';
+    sel.className = 'raa-langselect';
+
+    var label = document.createElement('label');
+    label.className = 'raa-langlabel';
+    label.textContent = i18n.summaryLangLabel || 'Summary language';
+    label.htmlFor = sel.id;
+
+    /* Server posiela skupiny: navrchu jazyky trhov, na ktorých Previo pôsobí,
+     * potom celý zoznam. Bez `<optgroup>` by prehodené poradie vyzeralo ako
+     * pokazené triedenie. */
+    var groups = data.langs || [];
+    for (var g = 0; g < groups.length; g++) {
+      var items = groups[g].items || [];
+      if (!items.length) { continue; }
+      var box = document.createElement('optgroup');
+      box.label = groups[g].group || '';
+      for (var i = 0; i < items.length; i++) {
+        var opt = document.createElement('option');
+        opt.value = items[i].code;
+        opt.textContent = items[i].label;
+        if (String(items[i].code) === String(data.lang)) { opt.selected = true; }
+        box.appendChild(opt);
+      }
+      sel.appendChild(box);
+    }
+
+    // Prepnutie rovno pregeneruje zhrnutie — inak by voľba vyzerala, že nič
+    // neurobila. Ten istý jazyk znova sa ignoruje, nech sa neplatí za volanie,
+    // ktoré nič nezmení.
+    sel.addEventListener('change', function () {
+      if (String(sel.value) === String(data.lang)) { return; }
+      requestSummary(issueId, issueLabel, sel.value, i18n.summaryLangWorking);
+    });
+
+    wrap.appendChild(label);
+    wrap.appendChild(sel);
+    return wrap;
+  }
+
+  /* `lang` je nepovinný: bez neho rozhoduje server (uložená voľba, inak
+   * My account). `workingText` sa líši pri prvom otvorení a pri prepnutí. */
+  function requestSummary(issueId, issueLabel, lang, workingText) {
     var o = buildOverlay();
-    ovOpener = link;
     o.title.textContent = (CFG.i18n && CFG.i18n.summaryTitle ? CFG.i18n.summaryTitle : '%{issue}')
-      .replace('%{issue}', link.getAttribute('data-issue-label') || '');
-    setOverlayText(link.getAttribute('data-working') || '', false, false);
+      .replace('%{issue}', issueLabel || '');
+    setOverlayText(workingText || '', false, false);
     o.overlay.style.display = 'flex';
-    focusQuietly(o.close);
 
     if (ovAbort) { ovAbort.abort(); }
     ovAbort = window.AbortController ? new window.AbortController() : null;
     var controller = ovAbort;
 
-    post(CFG.summaryPath, { issue_id: link.getAttribute('data-issue-id') },
-         controller && controller.signal)
+    var payload = { issue_id: issueId };
+    if (lang) { payload.lang = lang; }
+
+    post(CFG.summaryPath, payload, controller && controller.signal)
       .then(function (data) {
         if (controller !== ovAbort) { return; } // medzitým zavreté alebo prekliknuté
         setOverlayText(data.text, false, true);
+        // Lišta má zmysel len keď server číselník poslal. Keď ho z akéhokoľvek
+        // dôvodu nepošle, zostane zhrnutie ako doteraz — bez prepínača.
+        if (data.langs && data.langs.length) {
+          o.body.appendChild(summaryLangBar(data, issueId, issueLabel));
+        }
       })
       .catch(function (err) {
         if (err && err.name === 'AbortError') { return; }
@@ -639,6 +727,20 @@
       .finally(function () {
         if (controller === ovAbort) { ovAbort = null; }
       });
+  }
+
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest('a[data-raa="summary"]');
+    if (!link) { return; }
+    event.preventDefault();
+
+    var o = buildOverlay();
+    ovOpener = link;
+    requestSummary(link.getAttribute('data-issue-id'),
+                   link.getAttribute('data-issue-label') || '',
+                   null,
+                   link.getAttribute('data-working') || '');
+    focusQuietly(o.close);
   });
 
   /* ------------------------------------------------------------------ *

@@ -211,7 +211,27 @@ module RedmineAiAssistant
     'code_search_results'  => '3'
   }.freeze
 
+  # Kľúč v `UserPreference#others`, kde si každý človek nesie vlastnú voľbu
+  # jazyka zhrnutia. Vlastný prefix, nech je v cudzom hashi jasné, čí je —
+  # `others` zdieľajú všetky pluginy aj jadro.
+  #
+  # SYMBOL, nie string: jadro si tam všetky svoje kľúče ukladá ako symboly
+  # (`:comments_sorting`, `:my_page_layout`…) a pristupuje k nim cez
+  # `UserPreference#[]`. String by fungoval tiež, ale bol by to jediný cudzí
+  # prvok v hashi, ktorý si jadro kedykoľvek môže symbolizovať.
+  #
+  # POZOR: MUSÍ byť tu, na module, nie v `class << self` — tam by z nej bola
+  # konštanta singleton triedy a `RedmineAiAssistant::SUMMARY_LANG_PREF` by
+  # padalo na NameError (testy aj konzola ju čítajú takto).
+  SUMMARY_LANG_PREF = :ai_assistant_summary_language
+
   class << self
+    # `Redmine::I18n` je modul s INSTANCE metódami (jadro ho includuje do
+    # kontrolerov a helperov) — `Redmine::I18n.valid_languages` preto padá na
+    # NoMethodError. Primiešaním sem má `find_language` aj `languages_options`
+    # k dispozícii aj kód mimo requestu (napr. selftest cez rails runner).
+    include Redmine::I18n
+
     def settings
       stored = Setting.plugin_redmine_ai_assistant || {}
       DEFAULTS.merge(stored.to_h.reject { |_k, v| v.nil? || v.to_s.empty? })
@@ -335,10 +355,62 @@ module RedmineAiAssistant
 
     # `key` rozlišuje personu pre návrh odpovede a pre zhrnutie. Bez druhého
     # argumentu sa chová ako doteraz.
-    def system_prompt_for(user, key = 'system_prompt')
+    #
+    # `lang` je nepovinný kód jazyka (napr. 'sk'). Používa ho VÝHRADNE zhrnutie,
+    # ktoré má vlastný prepínač jazyka — návrh odpovede a ostatné funkcie ďalej
+    # idú v jazyku z My account. Zámerne sa nepreberá jedna spoločná voľba:
+    # zadanie bolo prepnúť jazyk zhrnutia, nie zmeniť správanie funkciám, ktoré
+    # dnes ľuďom fungujú.
+    def system_prompt_for(user, key = 'system_prompt', lang = nil)
       setting(key).to_s
         .gsub('{{NAME}}', user&.name.to_s)
-        .gsub('{{LANG}}', language_label(user))
+        .gsub('{{LANG}}', language_label(user, lang))
+    end
+
+    # Jazyk zhrnutia pre daného človeka: jeho vlastná voľba, inak My account.
+    # Vracia `nil`, keď si nič nevybral — volajúci podľa toho vie rozlíšiť
+    # „ešte si nevyberal" (ponúkne sa „Chceš to vo svojom jazyku?") od
+    # „vybral si" („Chceš iný jazyk?").
+    def summary_language(user)
+      return nil unless user&.logged?
+
+      # Cez jadrové `UserPreference#[]` — to samo rozhodne, či ide o stĺpec
+      # alebo o položku v `others`.
+      valid_language(user.pref&.[](SUMMARY_LANG_PREF))
+    end
+
+    # Uloží voľbu jazyka zhrnutia. Vracia normalizovaný kód, alebo nil keď
+    # jazyk nie je platný — vtedy sa NEUKLADÁ nič.
+    #
+    # POZOR, toto je bezpečnostná hranica: kód jazyka prichádza od klienta
+    # a ide rovno do systémového promptu modelu. Bez kontroly proti zoznamu
+    # jazykov Redmine by si ktokoľvek mohol cez `lang` podstrčiť ľubovoľný
+    # text do promptu (prompt injection).
+    def store_summary_language(user, code)
+      valid = valid_language(code)
+      return nil if valid.nil? || !user&.logged?
+
+      pref = user.pref
+      pref[SUMMARY_LANG_PREF] = valid
+      pref.save
+      valid
+    end
+
+    # Kód jazyka, v ktorom zhrnutie naozaj vyšlo — aby select v okne ukázal
+    # zaškrtnutú tú istú položku, ktorú model dostal v prompte.
+    def language_code_for_summary(user, lang = nil)
+      valid_language(lang) || summary_language(user) ||
+        user&.language.presence || Setting.default_language.presence || 'en'
+    end
+
+    # Normalizuje kód jazyka na ten, ktorý Redmine naozaj pozná — inak nil.
+    # Robí to jadrové `find_language` (rieši aj `zh-tw` → `zh-TW`), takže sa
+    # zoznam podporovaných jazykov nemusí držať na dvoch miestach.
+    def valid_language(code)
+      code = code.to_s.strip
+      return nil if code.empty?
+
+      find_language(code)&.to_s
     end
 
     # Jazyk, v ktorom ma model odpovedat — berie sa z My account daneho cloveka.
@@ -348,8 +420,9 @@ module RedmineAiAssistant
     # POZOR: `{{LANG}}` sa doplna do promptu az tu, takze funguje aj vtedy, ked
     # si admin prompt v nastaveniach prepisal — ale len ak v nom ten zastupny
     # znak necha. Preto to ma vlastnu poznamku v napovede k nastaveniu.
-    def language_label(user)
-      code = user&.language.presence || Setting.default_language.presence || 'en'
+    def language_label(user, lang = nil)
+      code = valid_language(lang) ||
+             user&.language.presence || Setting.default_language.presence || 'en'
       name = begin
         ::I18n.t(:general_lang_name, :locale => code, :default => nil)
       rescue StandardError
