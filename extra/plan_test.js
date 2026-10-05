@@ -69,6 +69,8 @@ const I18N = {
     shortcutHint: 'AI issue creator (%{keys})',
     placeholder: 'Opíš to vlastnými slovami…', projectLock: 'Nemeniť projekt',
     submit: 'See AI suggestion', refine: 'Prepočítať s doplnením', accept: 'Accept',
+    replyLabel: 'Chceš niečo inak? Napíš to sem.', replyPlaceholder: 'napr. rozdeľ to…',
+    reset: 'Vynulovať',
     working: 'Pripravujem návrh plánu…', heading: 'Návrh plánu',
     parent: 'Nadradená úloha', subtask: 'Podúloha', standalone: 'Samostatná úloha',
     noSubtasks: 'V projekte %{project} nemáš právo spravovať podúlohy.',
@@ -192,10 +194,13 @@ setTimeout(() => {
       const r = F1.doc.getElementById('raa-pl-project-reason');
       return r && r.hidden === false && r.textContent.indexOf('rezervácií') !== -1;
     })());
-    // Od návrhu ďalej je hlavný obsah okna plán, nie písanie.
-    check('vstupné pole sa zmenšilo',
-      F1.doc.getElementById('raa-pl-composer').classList.contains('raa-pl-compact') &&
-      F1.doc.getElementById('raa-pl-input').rows === 1);
+    // Od návrhu ďalej je composer pole na odpoveď — s vlastným popisom.
+    check('po návrhu je pole na odpoveď',
+      F1.doc.getElementById('raa-pl-box').classList.contains('raa-pl-reply') &&
+      F1.doc.getElementById('raa-pl-input-label').textContent === I18N.plan.replyLabel &&
+      F1.doc.getElementById('raa-pl-input').placeholder === I18N.plan.replyPlaceholder);
+    check('Vynulovať je po odoslaní viditeľné',
+      F1.doc.getElementById('raa-pl-reset').hidden === false);
 
     // XSS: nič z modelu sa nesmie stať elementom.
     check('žiadny <img> z modelu', body.querySelector('img') === null);
@@ -263,12 +268,40 @@ setTimeout(() => {
     const oi = ONE.doc.getElementById('raa-pl-input');
     oi.value = 'jedna vec';
     oi.dispatchEvent(new ONE.w.Event('input', { bubbles: true }));
+    check('Vynulovať pred prvým odoslaním nie je vidieť',
+      ONE.doc.getElementById('raa-pl-reset').hidden === true);
     ONE.doc.getElementById('raa-pl-submit').click();
     setTimeout(function () {
-      ONE.doc.getElementById('raa-pl-accept').click();
-      check('jedna úloha nezakladá frontu',
-        ONE.w.sessionStorage.getItem(QUEUE_KEY) === null);
-      runFixture2();
+      // Vynulovať vráti okno do stavu nového zadania bez zatvárania a refreshu.
+      ONE.doc.getElementById('raa-pl-reset').click();
+      const d = ONE.doc;
+      check('Vynulovať zmaže návrh aj transkript',
+        d.getElementById('raa-pl-plan').textContent === '' &&
+        d.getElementById('raa-pl-log').textContent === '');
+      check('Vynulovať vráti pole na nové zadanie',
+        !d.getElementById('raa-pl-box').classList.contains('raa-pl-reply') &&
+        d.getElementById('raa-pl-input-label').textContent === I18N.plan.inputLabel &&
+        d.getElementById('raa-pl-input').value === '');
+      check('Vynulovať vráti tlačidlá do počiatočného stavu',
+        d.getElementById('raa-pl-accept').hidden === true &&
+        d.getElementById('raa-pl-reset').hidden === true &&
+        d.getElementById('raa-pl-submit').textContent === I18N.plan.submit &&
+        d.getElementById('raa-pl-submit').disabled === true &&
+        d.getElementById('raa-pl-row').hidden === true);
+      const callsBefore = ONE.calls.length;
+      oi.value = 'iná vec';
+      oi.dispatchEvent(new ONE.w.Event('input', { bubbles: true }));
+      d.getElementById('raa-pl-submit').click();
+      setTimeout(function () {
+        const last = ONE.calls[ONE.calls.length - 1];
+        check('po vynulovaní ide nové zadanie bez starej histórie',
+          ONE.calls.length > callsBefore && last.body.input === 'iná vec' &&
+          last.body.messages.length === 1, JSON.stringify(last.body.messages));
+        d.getElementById('raa-pl-accept').click();
+        check('jedna úloha nezakladá frontu',
+          ONE.w.sessionStorage.getItem(QUEUE_KEY) === null);
+        runFixture2();
+      }, 40);
     }, 40);
   }, 40);
       }, 30);

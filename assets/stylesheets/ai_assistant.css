@@ -735,17 +735,24 @@ button.ai-assistant-btn[hidden] { display: none; }
   margin: 0;
 }
 
-/* Od prvého návrhu ďalej je hlavný obsah okna plán, nie písanie — vstupné pole
-   sa zmenší na jeden riadok a nadpis nad ním zmizne (v tej fáze je už zrejmé,
-   načo pole slúži, a zaberal by miesto plánu). */
-#raa-pl-composer.raa-pl-compact { padding: 8px 16px; }
+/* Od prvého návrhu ďalej je composer pole na ODPOVEĎ. Pôvodne sa zmenšilo na
+   jeden riadok a pri krátkom návrhu medzi ním a návrhom ostala veľká prázdna
+   plocha — ľudia ho prehliadli a nevedeli, že môžu odpovedať. Teraz telo
+   s návrhom zaberie len toľko, koľko potrebuje (pri dlhom sa scrolluje),
+   a zvyšok okna dostane pole na odpoveď. Pri dlhom návrhu má pole aspoň
+   ~5 riadkov. */
+#raa-pl-box.raa-pl-reply #raa-pl-body { flex: 0 1 auto; }
 
-#raa-pl-composer.raa-pl-compact #raa-pl-input-label { display: none; }
+#raa-pl-box.raa-pl-reply #raa-pl-composer { flex: 1 0 auto; }
 
-#raa-pl-composer.raa-pl-compact #raa-pl-input {
-  min-height: 34px;
-  max-height: 25vh;
+#raa-pl-box.raa-pl-reply #raa-pl-input {
+  flex: 1 1 auto;
+  min-height: 96px;
+  resize: none;
 }
+
+/* Vynulovať patrí k Cancel (vľavo), nie k primárnym akciám vpravo. */
+#raa-pl-foot #raa-pl-reset[hidden] { display: none; }
 
 #raa-pl-project-reason {
   margin: 0;

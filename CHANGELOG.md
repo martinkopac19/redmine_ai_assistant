@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.1 - 2026-10-06
+
+**AI issue creator: replying to a proposal is obvious, and there is a Reset button.**
+
+- After a proposal the input used to shrink to one line at the very bottom; with a short plan a
+  large empty gap sat between the plan and the input and people did not realise they could reply.
+  The input now has its own label (*"Want something different? Write it here and click
+  Recalculate with my notes."*) and an example placeholder, and it fills the space the plan does
+  not need. With a long plan the plan scrolls and the input keeps at least ~5 lines.
+- **Reset** next to *Cancel* (visible once something has been sent) starts a new request in the
+  same window — no more Cancel + page refresh. It clears the conversation and the proposal and
+  unlocks the project; the selected project stays.
+
 ## 0.7.0 - 2026-09-11
 
 **The summary now has its own language picker.** Roughly half the people here run Redmine in

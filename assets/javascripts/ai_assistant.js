@@ -1505,11 +1505,21 @@
     accept.className = 'ai-assistant-btn raa-dm-primary';
     accept.textContent = planText('accept');
     accept.hidden = true;
+    /* Nové zadanie bez zatvárania okna a refreshu stránky. Viditeľné až keď je čo
+     * zahodiť (prvé odoslanie), dovtedy by nerobilo nič. */
+    var reset = document.createElement('button');
+    reset.type = 'button';
+    reset.id = 'raa-pl-reset';
+    reset.className = 'ai-assistant-btn';
+    reset.textContent = planText('reset');
+    reset.hidden = true;
     dlg.foot.appendChild(cancel);
+    dlg.foot.appendChild(reset);
     dlg.foot.appendChild(submit);
     dlg.foot.appendChild(accept);
 
     cancel.addEventListener('click', closePlanDialog);
+    reset.addEventListener('click', resetPlanDialog);
     submit.addEventListener('click', submitPlanAnswers);
     accept.addEventListener('click', function () {
       if (planState.plan) { acceptPlan(planState.plan); }
@@ -1534,9 +1544,9 @@
     });
 
     pl = { overlay: dlg.overlay, box: dlg.box, body: dlg.body, foot: dlg.foot,
-           log: log, plan: plan, composer: composer, input: input, row: row,
+           log: log, plan: plan, composer: composer, label: label, input: input, row: row,
            project: project, projectReason: projectReason, lock: lock,
-           submit: submit, accept: accept, cancel: cancel, close: dlg.close };
+           submit: submit, accept: accept, cancel: cancel, reset: reset, close: dlg.close };
     return pl;
   }
 
@@ -1565,6 +1575,36 @@
     if (planState.opener && document.contains(planState.opener)) {
       focusQuietly(planState.opener);
     }
+  }
+
+  /* „Vynulovať" = stav ako po načítaní stránky: prázdny transkript, žiadny návrh,
+   * veľké pole na zadanie. Zoznam projektov a ich výber ostávajú (výber je pokyn
+   * človeka, viď fillPlanProjects), zámok sa ale uvoľní ako pri novom otvorení. */
+  function resetPlanDialog() {
+    var m = buildPlanDialog();
+    if (planState.abort) {
+      planState.abort.abort();
+      planState.abort = null;
+    }
+    planState.messages = [];
+    planState.plan = null;
+    planState.lockProject = false;
+    m.lock.checked = false;
+    m.log.textContent = '';
+    m.plan.textContent = '';
+    m.input.value = '';
+    clearUnsavedFlag();
+    m.box.classList.remove('raa-pl-reply');
+    m.label.textContent = planText('inputLabel');
+    m.input.placeholder = planText('placeholder');
+    m.row.hidden = true;
+    m.projectReason.hidden = true;
+    m.projectReason.textContent = '';
+    m.submit.textContent = planText('submit');
+    m.accept.hidden = true;
+    m.reset.hidden = true;
+    syncPlanSubmit();
+    focusQuietly(m.input);
   }
 
   /* Zoznam projektov sa dotiahne pri prvom otvorení a drží sa do konca stránky.
@@ -1659,6 +1699,7 @@
     // Zadanie ide do transkriptu HNEĎ a pole sa vyprázdni: keby sme čakali na
       // odpoveď, človek by nevidel, že sa jeho text odoslal, a písal by znova.
     planState.messages.push({ role: 'user', text: text });
+    m.reset.hidden = false;
     m.input.value = '';
     clearUnsavedFlag();
     syncPlanSubmit();
@@ -1811,11 +1852,13 @@
     }
 
     m.accept.hidden = false;
-    /* Od návrhu ďalej je hlavný obsah okna plán, nie písanie: vstupné pole sa
-     * zmenší na jeden riadok a telo dostane miesto. Riadok s projektom sa odkryje
-     * na ručnú opravu. */
-    m.composer.classList.add('raa-pl-compact');
-    m.input.rows = 1;
+    /* Od návrhu ďalej je pole na odpoveď. Ľudia nevedeli, že na návrh môžu
+     * odpovedať — jednoriadkové pole pod veľkou medzerou prehliadli. Preto má
+     * vlastný popis a vyplní miesto, ktoré návrh nezaberie (CSS `.raa-pl-reply`).
+     * Riadok s projektom sa odkryje na ručnú opravu. */
+    m.box.classList.add('raa-pl-reply');
+    m.label.textContent = planText('replyLabel');
+    m.input.placeholder = planText('replyPlaceholder');
     m.row.hidden = false;
     if (data.project && m.project.querySelector('option[value="' + data.project.id + '"]')) {
       m.project.value = String(data.project.id);
